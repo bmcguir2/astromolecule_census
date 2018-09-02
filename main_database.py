@@ -8,6 +8,7 @@
 
 # 1.0 - Project start (5/12/2018)
 # 1.1 - Cleaned up code
+# 1.2 - Added sulfur compounds to DU calculation.
 
 #############################################################
 #							Preamble						#
@@ -82,7 +83,7 @@ if sys.version_info.major != 3:
 	
 	quit()
 
-version = 1.1
+version = 1.2
 
 
 #############################################################
@@ -487,7 +488,7 @@ for x in full_list:
 	
 	#for molecules containing C, and only H,O,N, and halogens, calculate the degree of unsaturation
 	
-	if all(int(i) is 0 for i in [x.Si,x.Mg,x.Na,x.Al,x.K,x.Fe,x.Ti,x.Ar,x.P,x.Si,x.S]) and x.C != 0:
+	if all(int(i) is 0 for i in [x.Si,x.Mg,x.Na,x.Al,x.K,x.Fe,x.Ti,x.Ar,x.P,x.Si]) and x.C != 0:
 	
 		x.du = 1 + 0.5*(x.H*-1 + x.C*2 + x.N*1 + x.Cl*-1 + x.F*-1)
 		
