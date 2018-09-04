@@ -1409,9 +1409,11 @@ def du_by_source_type():
 		
 		n = len(du_values)
 		
-		outliers = ceil(n*0.1)
+		#outliers = ceil(n*0.1)
 		
-		types_dict[x] = du_values[outliers:n-outliers]		
+		#types_dict[x] = du_values[outliers:n-outliers]		
+		
+		types_dict[x] = du_values
 	
 	write_dict = {}
 	
@@ -2237,7 +2239,7 @@ def make_sources_list():
 				
 	return sorted(sources_list)	
 			
-#make_du_list generates an ascii file, two column, tab delimited, with the formula and degree of unsaturation for all hydrocarbon molecules
+#make_du_list generates an ascii file, two column, tab delimited, with the formula and degree of unsaturation for all hydrocarbon molecules (H, C, O, N, S, F, Cl) except fullerenes.
 			
 def make_du_list():
 
@@ -2245,7 +2247,7 @@ def make_du_list():
 
 		for x in full_list:
 	
-			if x.du != None:
+			if x.du != None and x.natoms < 60:
 		
 				output.write('{}\t{}\n' .format(x.formula,x.du))
 
@@ -2630,7 +2632,7 @@ def make_rel_du_list():
 		
 				output.write('{}\t{}\n' .format(x.formula,rel_du))	
 
-#rel_du_by_source_type() returns a tab-delimited ascii file with the relative degrees of unsaturation for each generalized source type, disregarding the fullerenes, and dropping the top and bottom 10% of values (or highest and lowest, in case of small numbers)
+#rel_du_by_source_type() returns a tab-delimited ascii file with the relative degrees of unsaturation for each generalized source type, disregarding the fullerenes.
 				
 def rel_du_by_source_type():
 
@@ -2675,11 +2677,7 @@ def rel_du_by_source_type():
 		
 		du_values = sorted(types_dict[x])
 		
-		n = len(du_values)
-		
-		outliers = ceil(n*0.1)
-		
-		types_dict[x] = du_values[outliers:n-outliers]		
+		types_dict[x] = du_values
 	
 	write_dict = {}
 	
