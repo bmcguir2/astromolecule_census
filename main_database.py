@@ -9,6 +9,7 @@
 # 1.0 - Project start (5/12/2018)
 # 1.1 - Cleaned up code
 # 1.2 - Added sulfur compounds to DU calculation.
+# 1.3 - Update to O2 detection paper.  Now references earlier work by Larsson et al. 2007.
 
 #############################################################
 #							Preamble						#
@@ -193,7 +194,7 @@ HF = Molecule('hydrogen fluoride','HF',1997,'HF','Sgr B2 LOS','ISO','IR',neutral
 N2 = Molecule('nitrogen','N2',2004,'N2','HD 124314 LOS','FUSE','UV',neutral=True,N=2,d_ref='Knauth et al. 2004 Nature 409, 636',lab_ref='Stark et al. 2000 ApJ 531, 321',notes=None)
 CFp = Molecule('fluoromethylidynium cation','CF+',2006,'CF+','Orion Bar','IRAM, APEX','mm',cation=True,C=1,F=1,d_ref='Neufeld et al. 2006 A&A 454, L37',lab_ref='Plummer et al. 1986 JCP 84, 2427',notes=None,exgal=True,exgal_d_ref='Muller et al. 2016 A&A 589, L5',exgal_sources='PKS 1830-211 LOS')
 PO = Molecule('phosphorous monoxide','PO',2007,'PO','VY Ca Maj','SMT','mm',neutral=True,O=1,P=1,d_ref='Tenenbaum et al. 2007 ApJ 666, L29',lab_ref='Bailleux et al. 2002 JMS 216, 465',notes=None)
-O2 = Molecule('oxygen','O2',2007,'O2','Orion, rho Oph A','Odin, Herschel','mm, sub-mm',neutral=True,O=2,d_ref='Goldsmith et al. 2011 ApJ 737, 96',lab_ref='Endo & Mizushima 1982 Jpn J Appl Phys 21, L379; Drouin et al. 2010 J Quant Spec Rad Transf 111, 1167',notes='*Also Larsson et al. 2007 A&A 466, 999; Tentative in Goldsmith 2002 ApJ 576, 814')
+O2 = Molecule('oxygen','O2',2007,'O2','Orion, rho Oph A','Odin, Herschel','mm, sub-mm',neutral=True,O=2,d_ref='Larsson et al. 2007 A&A 466, 999',lab_ref='Endo & Mizushima 1982 Jpn J Appl Phys 21, L379; Drouin et al. 2010 J Quant Spec Rad Transf 111, 1167',notes='*Also Larsson et al. 2007 A&A 466, 999; Tentative in Goldsmith 2002 ApJ 576, 814')
 AlO = Molecule('aluminum monoxide','AlO',2009,'AlO','VY Ca Maj','SMT','mm',neutral=True,O=1,Al=1,d_ref='Tenenbaum & Ziurys 2009 ApJ 693, L59',lab_ref='Yamada et al. 1990, JCP 92, 2146',notes=None)
 CNm = Molecule('cyanide anion','CN-',2010,'CN-','IRC+10216','IRAM','mm',anion=True,C=1,N=1,d_ref='Agúndez et al. 2010 A&A 517, L2',lab_ref='Amano 2008 JCP 129, 244305',notes=None)
 OHp = Molecule('hydroxyl cation','OH+',2010,'OH+','Sgr B2 LOS','APEX','sub-mm',cation=True,H=1,O=1,d_ref='Wyrowski et al. 2010 A&A 518, A26; Gerin et al. 2010 A&A 518, L110; Benz et al. 2010 A&A 521, L35',lab_ref='Bekooy et al. 1985 JCP 82, 3868',notes=None,exgal=True,exgal_d_ref='van der Werf et al. 2010 A&A 518, L42; Rangwala et al. 2011 ApJ 743, 94; Gonzalez-Alfonso et al. 2013 A&A 550, A25',exgal_sources='Mrk 231, Arp 220, NGC 4418')
