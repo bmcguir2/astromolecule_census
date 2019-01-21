@@ -10,6 +10,7 @@
 # 1.1 - Cleaned up code
 # 1.2 - Added sulfur compounds to DU calculation.
 # 1.3 - Update to O2 detection paper.  Now references earlier work by Larsson et al. 2007.
+# 1.4 - Adds rotational constants, dipole moments, and asymmetry parameters. (1/17/2019)
 
 #############################################################
 #							Preamble						#
@@ -70,6 +71,11 @@ to contribute it for the next update to the Census, that would also be most welc
 8) I am not a programmer, coder, or developer.  I am completely confident that this code
 is shockingly suboptimal, bloated, and un-pythonic.  But it does what I want it to do =).
 
+9) Dipole moments were obtained from the CDMS and JPL database entries for these species.
+a future update will include references to the original work these databases reference,
+although in many cases these dipole moments were calculated by the database curators
+themselves.
+
 '''
 
 import os, sys, argparse, math
@@ -84,7 +90,7 @@ if sys.version_info.major != 3:
 	
 	quit()
 
-version = 1.2
+version = 1.4
 
 
 #############################################################
@@ -93,7 +99,7 @@ version = 1.2
 
 class Molecule(object):
 
-	def __init__(self,name,formula,year,label,sources,telescopes,wavelengths,other_names='',neutral=False,cation=False,anion=False,radical=False,cyclic=False,mass=0,du=0,natoms=0,H=0,C=0,O=0,N=0,S=0,P=0,Si=0,Cl=0,F=0,Mg=0,Na=0,Al=0,K=0,Fe=0,Ti=0,Ar=0,d_ref=None,lab_ref=None,notes=None,ice=False,ice_d_ref=None,ice_l_ref=None,ppd=None,exgal=None,exo=None,isos=None,isomers=None,ppd_isos=None,ppd_d_ref=None,ppd_l_ref=None,ppd_isos_ref=None,exgal_d_ref=None,exgal_l_ref=None,exo_d_ref=None,exo_l_ref=None,exgal_sources=None,isos_d_ref=None,isos_l_ref=None):
+	def __init__(self,name,formula,year,label,sources,telescopes,wavelengths,other_names='',neutral=False,cation=False,anion=False,radical=False,cyclic=False,mass=0,du=0,natoms=0,Acon=None,Bcon=None,Ccon=None,mua=None,mub=None,muc=None,kappa=None,H=0,C=0,O=0,N=0,S=0,P=0,Si=0,Cl=0,F=0,Mg=0,Na=0,Al=0,K=0,Fe=0,Ti=0,Ar=0,d_ref=None,lab_ref=None,notes=None,ice=False,ice_d_ref=None,ice_l_ref=None,ppd=None,exgal=None,exo=None,isos=None,isomers=None,ppd_isos=None,ppd_d_ref=None,ppd_l_ref=None,ppd_isos_ref=None,exgal_d_ref=None,exgal_l_ref=None,exo_d_ref=None,exo_l_ref=None,exgal_sources=None,isos_d_ref=None,isos_l_ref=None):
 	
 		self.name = name
 		self.formula = formula
@@ -111,6 +117,13 @@ class Molecule(object):
 		self.mass = mass
 		self.du = du
 		self.natoms = natoms
+		self.Acon = Acon
+		self.Bcon = Bcon
+		self.Ccon = Ccon
+		self.mua = mua
+		self.mub = mub
+		self.muc = muc
+		self.kappa = kappa		
 		self.H = H
 		self.C = C
 		self.O = O
@@ -165,45 +178,45 @@ class Source(object):
 #						Two Atom Molecules					#
 #############################################################		
 
-CH = Molecule('methylidyne','CH',1937,'CH','LOS Cloud','Mt Wilson','UV, Vis',neutral=True,H=1,C=1,d_ref='Dunham 1937 PASP 49, 26; Swings & Rosenfeld 1937 ApJ 86, 483; McKellar 1940 PASP 52, 187',lab_ref='Jevons 1932 Phys Soc. pp 177-179; Brazier & Brown 1983 JCP 78, 1608',notes='*First radio in Rydbeck et al. 1973 Nature 246, 466',exgal=True,exgal_d_ref='Whiteoak et al. 1980 MNRAS 190, 17',exgal_sources='LMC, NGC 4945, NGC 5128')
-CN = Molecule('cyano radical','CN',1940,'CN','LOS Cloud','Mt Wilson','UV',radical=True,neutral=True,C=1,N=1,d_ref='McKellar 1940 PASP 52, 187',lab_ref='Poletto and Rigutti 1965 Il Nuovo Cimento 39, 519; Dixon & Woods 1977 JCP 67, 3956; Thomas & Dalby 1968 Can. J. Phys. 46, 2815',notes='*First radio in Jefferts et al. 1970 ApJ 161, L87',ppd=True,ppd_d_ref='Kastner et al. 1997 Science 277, 67; Dutrey et al. 1997 A&A 317, L55',ppd_isos='C15N',ppd_isos_ref='[C15N] Hily-Blant et al. 2017 A&A 603, L6',exgal=True,exgal_d_ref='Henkel et al. 1988 A&A 201, L23',exgal_sources='M82, NGC 253, IC 342')
-CHp = Molecule('methylidyne cation','CH+',1941,'CH+','LOS Cloud','Mt Wilson','UV, Vis',cation=True,H=1,C=1,d_ref='Douglas & Herzberg 1941 ApJ 94, 381; Dunham 1937 PASP 49, 26',lab_ref='Douglas & Herzberg 1941 ApJ 94, 381',notes=None,ppd=True,ppd_d_ref='Thi et al. 2011 A&A 530, L2',exgal=True,exgal_d_ref='Magain & Gillet 1987 A&A 184, L5',exgal_sources='LMC')
-OH = Molecule('hydroxyl radical','OH',1963,'OH','Cas A LOS','Millstone Hill','cm',radical=True,neutral=True,H=1,O=1,d_ref='Weinreb et al. 1963 Nature 200, 829',lab_ref='Ehrenstein et al. 1959 PRL 3, 40',notes=None,ppd=True,ppd_d_ref='Mandell et al. 2008 ApJ 681, L25; Salyk et al. 2008 ApJ 676, L49',exgal=True,exgal_d_ref='Weliachew 1971 ApJ 167, L47',exgal_sources='M82, NGC 253')
-CO = Molecule('carbon monoxide','CO',1970,'CO','Orion','NRAO 36-ft','mm',neutral=True,C=1,O=1,d_ref='Wilson et al. 1970 ApJ 161, L43',lab_ref='Cord et al. 1968 Microwave Spectral Tables V5',notes=None,ice=True,ice_d_ref='Soifer et al. 1979 ApJ 232, L53',ice_l_ref='Mantz et al. 1975 JMS 57, 155',ppd=True,ppd_d_ref='Beckwith et al. 1986 ApJ 309, 755',ppd_isos='13CO, C18O, C17O',ppd_isos_ref='[13CO] Sargent & Beckwith 1987 ApJ 323, 294 [C18O] Dutrey et al. 1994 A&A 286, 149 [C17O] Smith et al. 2009 ApJ 701, 163; Guilloteau et al. 2013 A&A 549, A92',exo=True,exo_d_ref='Madhusudhan et al. 2011 Nature 469, 64; Barman et al. 2011 ApJ 733, 65; Lanotte et al. 2014 A&A 572, A73; Barman et al. 2015 ApJ 804, 61',exgal=True,exgal_d_ref='Rickard et al. 1975 ApJ 199, L75',exgal_sources='M82, NGC 253')
-H2 = Molecule('hydrogen','H2',1970,'H2','Xi Per LOS','Aerobee-150 Rocket','UV',neutral=True,H=2,d_ref='Carruthers 1970 ApJ 161, L81',lab_ref='Carruthers 1970 ApJ 161, L81',notes=None,ppd=True,ppd_d_ref='Thi et al. 1999 ApJ 521, L63',ppd_isos='HD',ppd_isos_ref='[HD] Bergin et al. 2013 Nature 493, 644',exgal=True,exgal_d_ref='Thompson et al. 1978 ApJ 222, L49',exgal_sources='NGC 1068')
-SiO = Molecule('silicon monoxide','SiO',1971,'SiO','Sgr B2','NRAO 36-ft','mm',neutral=True,O=1,Si=1,d_ref='Wilson et al. 1971 ApJ 167, L97',lab_ref='Törring 1968 Z. Naturforschung 23A, 777; Raymonda et al. 1970 JCP 52, 3458',notes=None,exgal=True,exgal_d_ref='Mauersberger & Henkel 1991 A&A 245, 457',exgal_sources='NGC 253')
-CS = Molecule('carbon monosulfide','CS',1971,'CS','Orion, W51, IRC+10216, DR 21','NRAO 36-ft','mm',neutral=True,C=1,S=1,d_ref='Penzias et al. 1971 ApJ 168, L53',lab_ref='Mockler & Bird 1955 Phys Rev 98, 1837',notes=None,ppd=True,ppd_d_ref='Ohashi et al. 1991 AJ 102, 2054; Blake et al. 1992 ApJ 391, L99; Guilloteau et al. 2012 A&A 548, A70',ppd_isos='C34S',ppd_isos_ref='[C34S] Artur de la Villarmois et al. 2018 A&A 614, A26',exgal=True,exgal_d_ref='Henkel & Bally 1985 A&A 150, L25',exgal_sources='M82, IC 342')
-SO = Molecule('sulfur monoxide','SO',1973,'SO','Orion','NRAO 36-ft','mm',neutral=True,O=1,S=1,d_ref='Gottlieb & Ball 1973 ApJ 184, L59',lab_ref='Winnewisser et al. 1964 JCP 41, 1687',notes=None,ppd=True,ppd_d_ref='Fuente et al. 2010 A&A 524, A19',exgal=True,exgal_d_ref='Johansson 1991 Proc. IAU Symposium 146, 1; Petuchowski & Bennett 1992 ApJ 391, 137',exgal_sources='M82, NGC 253')
-SiS = Molecule('silicon monosulfide','SiS',1975,'SiS','IRC+10216','NRAO 36-ft','mm',neutral=True,S=1,Si=1,d_ref='Morris et al. 1975 ApJ 199, L47',lab_ref='Hoeft 1965 Z. fur Naturforschung A, A20, 1327',notes=None)
-NS = Molecule('nitrogen monosulfide','NS',1975,'NS','Sgr B2','NRAO 36-ft','mm',neutral=True,N=1,S=1,d_ref='Gottlieb et al. 1975 ApJ 200, L147; Kuiper et al. 1975 ApJ 200, L151',lab_ref='Amano et al. 1969 JMS 32, 97',notes=None,exgal=True,exgal_d_ref='Martin et al. 2003 A&A 411, L465',exgal_sources='NGC 253')
-C2 = Molecule('dicarbon','C2',1977,'C2','Cygnus OB2 - 12 LOS','Mt Hopkins','IR',neutral=True,C=2,d_ref='Souza and Lutz 1977 ApJ 216, L49',lab_ref='Phillips 1948 ApJ 107, 389',exgal=True,exgal_d_ref='Welty et al. 2012 MNRAS 428, 1107', exgal_sources='SMC', notes=None)
-NO = Molecule('nitric oxide','NO',1978,'NO','Sgr B2','NRAO 36-ft','mm',neutral=True,O=1,N=1,d_ref='Liszt and Turner 1978 ApJ 224, L73',lab_ref='Gallagher & Johnson 1956 Phys Rev 103, 1727',notes=None,exgal=True,exgal_d_ref='Martin et al. 2003 A&A 411, L465',exgal_sources='NGC 253')
-HCl = Molecule('hydrogen chloride','HCl',1985,'HCl','Orion','Kuiper','sub-mm',neutral=True,H=1,Cl=1,d_ref='Blake et al. 1985 ApJ 295, 501',lab_ref='de Lucia et al. 1971 Phys Rev A 3, 1849',notes=None)
-NaCl = Molecule('sodium chloride','NaCl',1987,'NaCl','IRC+10216','IRAM','mm',neutral=True,Cl=1,Na=1,d_ref='Cernicharo & Guélin 1987 A&A 183, L10',lab_ref='Lovas & Tiemann 1974 J Phys Chem Ref Data 3, 609',notes=None)
-AlCl = Molecule('aluminum chloride','AlCl',1987,'AlCl','IRC+10216','IRAM','mm',neutral=True,Cl=1,Al=1,d_ref='Cernicharo & Guélin 1987 A&A 183, L10',lab_ref='Lovas & Tiemann 1974 J Phys Chem Ref Data 3, 609',notes=None)
-KCl = Molecule('potassium chloride','KCl',1987,'KCl','IRC+10216','IRAM','mm',neutral=True,Cl=1,K=1,d_ref='Cernicharo & Guélin 1987 A&A 183, L10',lab_ref='Lovas & Tiemann 1974 J Phys Chem Ref Data 3, 609',notes=None)
-AlF = Molecule('aluminum fluoride','AlF',1987,'AlF','IRC+10216','IRAM','mm',neutral=True,F=1,Al=1,d_ref='Cernicharo & Guélin 1987 A&A 183, L10',lab_ref='Lovas & Tiemann 1974 J Phys Chem Ref Data 3, 609',notes='*Confirmed in 1994 ApJ 433, 729',isos='26AlF',isos_d_ref='[26AlF] Kamiński et al. 2018 Nature Astronomy 2, 778')
-PN = Molecule('phosphorous mononitride','PN',1987,'PN','TMC-1, Orion, W51, Sgr B2','NRAO 12-m, FCRAO 14-m, OVRO','mm',neutral=True,N=1,P=1,d_ref='Sutton et al. 1985 ApJS 58, 341',lab_ref='Wyse et al. 1972 JCP 57, 1106',notes='*Confirmed in Turner & Bally 1987 ApJ 321, L75 and Ziurys 1987 ApJ 321 L81')
-SiC = Molecule('silicon carbide','SiC',1989,'SiC','IRC+10216','IRAM','mm',radical=True,neutral=True,C=1,Si=1,d_ref='Cernicharo et al. 1989 ApJ 341, L25',lab_ref='Cernicharo et al. 1989 ApJ 341, L25',notes=None)
-CP = Molecule('carbon monophosphide','CP',1990,'CP','IRC+10216','IRAM','mm',radical=True,neutral=True,C=1,P=1,d_ref='Guélin et al. 1990 A&A 230, L9',lab_ref='Saito et al. 1989 ApJ 341, 1114',notes=None)
-NH = Molecule('imidogen radical','NH',1991,'NH','Xi Per LOS, HD 27778 LOS','KPNO 4-m, IRAM','UV',radical=True,neutral=True,H=1,N=1,d_ref='Meyer & Roth 1991 ApJ 376, L49',lab_ref='Dixon 1959 Can J. Phys. 37, 1171 and Klaus et al. 1997 A&A 322, L1',notes='*First radio in Cernicharo et al. 2000 ApJ 534, L199',exgal=True,exgal_d_ref='Gonzalez-Alfonso et al. 2004 ApJ 613, 247',exgal_sources='Arp 220')
-SiN = Molecule('silicon nitride ','SiN',1992,'SiN','IRC+10216','NRAO 12-m','mm',radical=True,neutral=True,N=1,Si=1,d_ref='Turner 1992 ApJ 388, L35',lab_ref='Saito et al. 1983 JCP 78, 6447',notes=None)
-SOp = Molecule('sulfur monoxide cation','SO+',1992,'SO+','IC 443G','NRAO 12-m','mm',cation=True,radical=True,O=1,S=1,d_ref='Turner 1992 ApJ 396, L107',lab_ref='Amano et al. 1991 JMS 146, 519',notes=None,exgal=True,exgal_d_ref='Muller et al. 2011 A&A 535, A103',exgal_sources='PKS 1830-211 LOS')
-COp = Molecule('carbon monoxide cation','CO+',1993,'CO+','M17SW, NGC 7027','NRAO 12-m','mm',cation=True,C=1,O=1,d_ref='Latter et al. 1993 ApJ 419, L97',lab_ref='Sastry et al. 1981 ApJ 250, L91',notes=None,exgal=True,exgal_d_ref='Fuente et al. 2006 ApJ 641, L105',exgal_sources='M82')
-HF = Molecule('hydrogen fluoride','HF',1997,'HF','Sgr B2 LOS','ISO','IR',neutral=True,H=1,F=1,d_ref='Neufeld et al. 1997 ApJ 488, L141',lab_ref='Nolt et al. 1987 JMS 125, 274',notes=None,exgal=True,exgal_d_ref='van der Werf et al. 2010 A&A 518, L42; Rangwala et al. 2011 ApJ 743, 94; Monje et al. 2011 ApJL 742, L21',exgal_sources='Mrk 231, Arp 220, Cloverleaf LOS')
-N2 = Molecule('nitrogen','N2',2004,'N2','HD 124314 LOS','FUSE','UV',neutral=True,N=2,d_ref='Knauth et al. 2004 Nature 409, 636',lab_ref='Stark et al. 2000 ApJ 531, 321',notes=None)
-CFp = Molecule('fluoromethylidynium cation','CF+',2006,'CF+','Orion Bar','IRAM, APEX','mm',cation=True,C=1,F=1,d_ref='Neufeld et al. 2006 A&A 454, L37',lab_ref='Plummer et al. 1986 JCP 84, 2427',notes=None,exgal=True,exgal_d_ref='Muller et al. 2016 A&A 589, L5',exgal_sources='PKS 1830-211 LOS')
-PO = Molecule('phosphorous monoxide','PO',2007,'PO','VY Ca Maj','SMT','mm',neutral=True,O=1,P=1,d_ref='Tenenbaum et al. 2007 ApJ 666, L29',lab_ref='Bailleux et al. 2002 JMS 216, 465',notes=None)
-O2 = Molecule('oxygen','O2',2007,'O2','Orion, rho Oph A','Odin, Herschel','mm, sub-mm',neutral=True,O=2,d_ref='Larsson et al. 2007 A&A 466, 999',lab_ref='Endo & Mizushima 1982 Jpn J Appl Phys 21, L379; Drouin et al. 2010 J Quant Spec Rad Transf 111, 1167',notes='*Also Larsson et al. 2007 A&A 466, 999; Tentative in Goldsmith 2002 ApJ 576, 814')
-AlO = Molecule('aluminum monoxide','AlO',2009,'AlO','VY Ca Maj','SMT','mm',neutral=True,O=1,Al=1,d_ref='Tenenbaum & Ziurys 2009 ApJ 693, L59',lab_ref='Yamada et al. 1990, JCP 92, 2146',notes=None)
-CNm = Molecule('cyanide anion','CN-',2010,'CN-','IRC+10216','IRAM','mm',anion=True,C=1,N=1,d_ref='Agúndez et al. 2010 A&A 517, L2',lab_ref='Amano 2008 JCP 129, 244305',notes=None)
-OHp = Molecule('hydroxyl cation','OH+',2010,'OH+','Sgr B2 LOS','APEX','sub-mm',cation=True,H=1,O=1,d_ref='Wyrowski et al. 2010 A&A 518, A26; Gerin et al. 2010 A&A 518, L110; Benz et al. 2010 A&A 521, L35',lab_ref='Bekooy et al. 1985 JCP 82, 3868',notes=None,exgal=True,exgal_d_ref='van der Werf et al. 2010 A&A 518, L42; Rangwala et al. 2011 ApJ 743, 94; Gonzalez-Alfonso et al. 2013 A&A 550, A25',exgal_sources='Mrk 231, Arp 220, NGC 4418')
-SHp = Molecule('sulfanylium cation','SH+',2011,'SH+','Sgr B2','Herschel','sub-mm',cation=True,H=1,S=1,d_ref='Benz et al. 2010 A&A 521, L35',lab_ref='Brown et al. 2009 JMS 255, 68',notes='*Also in Menten et al. 2011 A&A 525, A77',exgal=True,exgal_d_ref='Muller et al. 2017 A&A 606, A109',exgal_sources='PKS 1830-211')
-HClp = Molecule('hydrogen chloride cation','HCl+',2012,'HCl+','W31 LOS, W49 LOS','Herschel','sub-mm',cation=True,H=1,Cl=1,d_ref='de Luca et al. 2012 ApJ 751, L37',lab_ref='Gupta et al. 2012 ApJ 751, L38',notes=None)
-SH = Molecule('mercapto radical','SH',2012,'SH','W49 LOS','SOFIA','sub-mm',radical=True,neutral=True,H=1,S=1,d_ref='Neufeld et al. 2012 A&A 542, L6',lab_ref='Morino & Kawaguchi 1995 JMS 170, 172; Klisch et al. 1996 ApJ 473, 1118',notes=None)
-TiO = Molecule('titanium monoxide','TiO',2013,'TiO','VY Ca Maj','SMA','mm',neutral=True,O=1,Ti=1,d_ref='Kamiński et al. 2013 A&A 551, A113',lab_ref='Nakimi et al. 1998 JMS 191, 176',notes=None,exo=True,exo_d_ref='Haynes et al. 2015 ApJ 806, 146; Sedaghati et al. 2017 Nature 549, 238; Nugroho et al. 2017 ApJ 154, 221')
-ArHp = Molecule('argonium','ArH+',2013,'ArH+','Crab Nebula','Herschel','sub-mm',cation=True,H=1,Ar=1,d_ref='Barlow et al. 2013 Science 342, 1343',lab_ref='Barlow et al. 2013 Science 342, 1343',notes=None,exgal=True,exgal_d_ref='Muller et al. 2015 A&A 582, L4',exgal_sources='PKS 1830-211 LOS')
-NSp = Molecule('nitrogen sulfide cation','NS+',2018,'NS+','B1-b, TMC-1, L483','IRAM','mm',cation=True,N=1,S=1,d_ref='Cernicharo et al. 2018 ApJL 853, L22',lab_ref='Cernicharo et al. 2018 ApJL 853, L22',notes=None)
+CH = Molecule('methylidyne','CH',1937,'CH','LOS Cloud','Mt Wilson','UV, Vis',neutral=True,H=1,C=1,d_ref='Dunham 1937 PASP 49, 26; Swings & Rosenfeld 1937 ApJ 86, 483; McKellar 1940 PASP 52, 187',lab_ref='Jevons 1932 Phys Soc. pp 177-179; Brazier & Brown 1983 JCP 78, 1608',notes='*First radio in Rydbeck et al. 1973 Nature 246, 466',exgal=True,exgal_d_ref='Whiteoak et al. 1980 MNRAS 190, 17',exgal_sources='LMC, NGC 4945, NGC 5128',Bcon=425476,mua=1.5)
+CN = Molecule('cyano radical','CN',1940,'CN','LOS Cloud','Mt Wilson','UV',radical=True,neutral=True,C=1,N=1,d_ref='McKellar 1940 PASP 52, 187',lab_ref='Poletto and Rigutti 1965 Il Nuovo Cimento 39, 519; Dixon & Woods 1977 JCP 67, 3956; Thomas & Dalby 1968 Can. J. Phys. 46, 2815',notes='*First radio in Jefferts et al. 1970 ApJ 161, L87',ppd=True,ppd_d_ref='Kastner et al. 1997 Science 277, 67; Dutrey et al. 1997 A&A 317, L55',ppd_isos='C15N',ppd_isos_ref='[C15N] Hily-Blant et al. 2017 A&A 603, L6',exgal=True,exgal_d_ref='Henkel et al. 1988 A&A 201, L23',exgal_sources='M82, NGC 253, IC 342',Bcon=56693,mua=1.5)
+CHp = Molecule('methylidyne cation','CH+',1941,'CH+','LOS Cloud','Mt Wilson','UV, Vis',cation=True,H=1,C=1,d_ref='Douglas & Herzberg 1941 ApJ 94, 381; Dunham 1937 PASP 49, 26',lab_ref='Douglas & Herzberg 1941 ApJ 94, 381',notes=None,ppd=True,ppd_d_ref='Thi et al. 2011 A&A 530, L2',exgal=True,exgal_d_ref='Magain & Gillet 1987 A&A 184, L5',exgal_sources='LMC',Bcon=417617,mua=1.7)
+OH = Molecule('hydroxyl radical','OH',1963,'OH','Cas A LOS','Millstone Hill','cm',radical=True,neutral=True,H=1,O=1,d_ref='Weinreb et al. 1963 Nature 200, 829',lab_ref='Ehrenstein et al. 1959 PRL 3, 40',notes=None,ppd=True,ppd_d_ref='Mandell et al. 2008 ApJ 681, L25; Salyk et al. 2008 ApJ 676, L49',exgal=True,exgal_d_ref='Weliachew 1971 ApJ 167, L47',exgal_sources='M82, NGC 253',Bcon=556174,mua=1.7)
+CO = Molecule('carbon monoxide','CO',1970,'CO','Orion','NRAO 36-ft','mm',neutral=True,C=1,O=1,d_ref='Wilson et al. 1970 ApJ 161, L43',lab_ref='Cord et al. 1968 Microwave Spectral Tables V5',notes=None,ice=True,ice_d_ref='Soifer et al. 1979 ApJ 232, L53',ice_l_ref='Mantz et al. 1975 JMS 57, 155',ppd=True,ppd_d_ref='Beckwith et al. 1986 ApJ 309, 755',ppd_isos='13CO, C18O, C17O',ppd_isos_ref='[13CO] Sargent & Beckwith 1987 ApJ 323, 294 [C18O] Dutrey et al. 1994 A&A 286, 149 [C17O] Smith et al. 2009 ApJ 701, 163; Guilloteau et al. 2013 A&A 549, A92',exo=True,exo_d_ref='Madhusudhan et al. 2011 Nature 469, 64; Barman et al. 2011 ApJ 733, 65; Lanotte et al. 2014 A&A 572, A73; Barman et al. 2015 ApJ 804, 61',exgal=True,exgal_d_ref='Rickard et al. 1975 ApJ 199, L75',exgal_sources='M82, NGC 253',Bcon=57636,mua=0.1)
+H2 = Molecule('hydrogen','H2',1970,'H2','Xi Per LOS','Aerobee-150 Rocket','UV',neutral=True,H=2,d_ref='Carruthers 1970 ApJ 161, L81',lab_ref='Carruthers 1970 ApJ 161, L81',notes=None,ppd=True,ppd_d_ref='Thi et al. 1999 ApJ 521, L63',ppd_isos='HD',ppd_isos_ref='[HD] Bergin et al. 2013 Nature 493, 644',exgal=True,exgal_d_ref='Thompson et al. 1978 ApJ 222, L49',exgal_sources='NGC 1068',mua=0.0)
+SiO = Molecule('silicon monoxide','SiO',1971,'SiO','Sgr B2','NRAO 36-ft','mm',neutral=True,O=1,Si=1,d_ref='Wilson et al. 1971 ApJ 167, L97',lab_ref='Törring 1968 Z. Naturforschung 23A, 777; Raymonda et al. 1970 JCP 52, 3458',notes=None,exgal=True,exgal_d_ref='Mauersberger & Henkel 1991 A&A 245, 457',exgal_sources='NGC 253',Bcon=21712,mua=3.1)
+CS = Molecule('carbon monosulfide','CS',1971,'CS','Orion, W51, IRC+10216, DR 21','NRAO 36-ft','mm',neutral=True,C=1,S=1,d_ref='Penzias et al. 1971 ApJ 168, L53',lab_ref='Mockler & Bird 1955 Phys Rev 98, 1837',notes=None,ppd=True,ppd_d_ref='Ohashi et al. 1991 AJ 102, 2054; Blake et al. 1992 ApJ 391, L99; Guilloteau et al. 2012 A&A 548, A70',ppd_isos='C34S',ppd_isos_ref='[C34S] Artur de la Villarmois et al. 2018 A&A 614, A26',exgal=True,exgal_d_ref='Henkel & Bally 1985 A&A 150, L25',exgal_sources='M82, IC 342',Bcon=24496,mua=2.0)
+SO = Molecule('sulfur monoxide','SO',1973,'SO','Orion','NRAO 36-ft','mm',neutral=True,O=1,S=1,d_ref='Gottlieb & Ball 1973 ApJ 184, L59',lab_ref='Winnewisser et al. 1964 JCP 41, 1687',notes=None,ppd=True,ppd_d_ref='Fuente et al. 2010 A&A 524, A19',exgal=True,exgal_d_ref='Johansson 1991 Proc. IAU Symposium 146, 1; Petuchowski & Bennett 1992 ApJ 391, 137',exgal_sources='M82, NGC 253',Bcon=21524,mua=1.5)
+SiS = Molecule('silicon monosulfide','SiS',1975,'SiS','IRC+10216','NRAO 36-ft','mm',neutral=True,S=1,Si=1,d_ref='Morris et al. 1975 ApJ 199, L47',lab_ref='Hoeft 1965 Z. fur Naturforschung A, A20, 1327',notes=None,Bcon=9077,mua=1.7)
+NS = Molecule('nitrogen monosulfide','NS',1975,'NS','Sgr B2','NRAO 36-ft','mm',neutral=True,N=1,S=1,d_ref='Gottlieb et al. 1975 ApJ 200, L147; Kuiper et al. 1975 ApJ 200, L151',lab_ref='Amano et al. 1969 JMS 32, 97',notes=None,exgal=True,exgal_d_ref='Martin et al. 2003 A&A 411, L465',exgal_sources='NGC 253',Bcon=23155,mua=1.8)
+C2 = Molecule('dicarbon','C2',1977,'C2','Cygnus OB2 - 12 LOS','Mt Hopkins','IR',neutral=True,C=2,d_ref='Souza and Lutz 1977 ApJ 216, L49',lab_ref='Phillips 1948 ApJ 107, 389',exgal=True,exgal_d_ref='Welty et al. 2012 MNRAS 428, 1107', exgal_sources='SMC', notes=None,mua=0.0)
+NO = Molecule('nitric oxide','NO',1978,'NO','Sgr B2','NRAO 36-ft','mm',neutral=True,O=1,N=1,d_ref='Liszt and Turner 1978 ApJ 224, L73',lab_ref='Gallagher & Johnson 1956 Phys Rev 103, 1727',notes=None,exgal=True,exgal_d_ref='Martin et al. 2003 A&A 411, L465',exgal_sources='NGC 253',Bcon=50849,mua=0.2)
+HCl = Molecule('hydrogen chloride','HCl',1985,'HCl','Orion','Kuiper','sub-mm',neutral=True,H=1,Cl=1,d_ref='Blake et al. 1985 ApJ 295, 501',lab_ref='de Lucia et al. 1971 Phys Rev A 3, 1849',notes=None,Bcon=312989,mua=1.1)
+NaCl = Molecule('sodium chloride','NaCl',1987,'NaCl','IRC+10216','IRAM','mm',neutral=True,Cl=1,Na=1,d_ref='Cernicharo & Guélin 1987 A&A 183, L10',lab_ref='Lovas & Tiemann 1974 J Phys Chem Ref Data 3, 609',notes=None,Bcon=6513,mua=9.0)
+AlCl = Molecule('aluminum chloride','AlCl',1987,'AlCl','IRC+10216','IRAM','mm',neutral=True,Cl=1,Al=1,d_ref='Cernicharo & Guélin 1987 A&A 183, L10',lab_ref='Lovas & Tiemann 1974 J Phys Chem Ref Data 3, 609',notes=None,Bcon=7289,mua='*')
+KCl = Molecule('potassium chloride','KCl',1987,'KCl','IRC+10216','IRAM','mm',neutral=True,Cl=1,K=1,d_ref='Cernicharo & Guélin 1987 A&A 183, L10',lab_ref='Lovas & Tiemann 1974 J Phys Chem Ref Data 3, 609',notes=None,Bcon=3845,mua=10.3)
+AlF = Molecule('aluminum fluoride','AlF',1987,'AlF','IRC+10216','IRAM','mm',neutral=True,F=1,Al=1,d_ref='Cernicharo & Guélin 1987 A&A 183, L10',lab_ref='Lovas & Tiemann 1974 J Phys Chem Ref Data 3, 609',notes='*Confirmed in 1994 ApJ 433, 729',isos='26AlF',isos_d_ref='[26AlF] Kamiński et al. 2018 Nature Astronomy 2, 778',Bcon=16488,mua=1.5)
+PN = Molecule('phosphorous mononitride','PN',1987,'PN','TMC-1, Orion, W51, Sgr B2','NRAO 12-m, FCRAO 14-m, OVRO','mm',neutral=True,N=1,P=1,d_ref='Sutton et al. 1985 ApJS 58, 341',lab_ref='Wyse et al. 1972 JCP 57, 1106',notes='*Confirmed in Turner & Bally 1987 ApJ 321, L75 and Ziurys 1987 ApJ 321 L81',Bcon=23495,mua=2.7)
+SiC = Molecule('silicon carbide','SiC',1989,'SiC','IRC+10216','IRAM','mm',radical=True,neutral=True,C=1,Si=1,d_ref='Cernicharo et al. 1989 ApJ 341, L25',lab_ref='Cernicharo et al. 1989 ApJ 341, L25',notes=None,Bcon=20298,mua=1.7)
+CP = Molecule('carbon monophosphide','CP',1990,'CP','IRC+10216','IRAM','mm',radical=True,neutral=True,C=1,P=1,d_ref='Guélin et al. 1990 A&A 230, L9',lab_ref='Saito et al. 1989 ApJ 341, 1114',notes=None,Bcon=23860,mua='*')
+NH = Molecule('imidogen radical','NH',1991,'NH','Xi Per LOS, HD 27778 LOS','KPNO 4-m, IRAM','UV',radical=True,neutral=True,H=1,N=1,d_ref='Meyer & Roth 1991 ApJ 376, L49',lab_ref='Dixon 1959 Can J. Phys. 37, 1171 and Klaus et al. 1997 A&A 322, L1',notes='*First radio in Cernicharo et al. 2000 ApJ 534, L199',exgal=True,exgal_d_ref='Gonzalez-Alfonso et al. 2004 ApJ 613, 247',exgal_sources='Arp 220',Bcon=489959,mua=1.4)
+SiN = Molecule('silicon nitride ','SiN',1992,'SiN','IRC+10216','NRAO 12-m','mm',radical=True,neutral=True,N=1,Si=1,d_ref='Turner 1992 ApJ 388, L35',lab_ref='Saito et al. 1983 JCP 78, 6447',notes=None,Bcon=21828,mua=2.6)
+SOp = Molecule('sulfur monoxide cation','SO+',1992,'SO+','IC 443G','NRAO 12-m','mm',cation=True,radical=True,O=1,S=1,d_ref='Turner 1992 ApJ 396, L107',lab_ref='Amano et al. 1991 JMS 146, 519',notes=None,exgal=True,exgal_d_ref='Muller et al. 2011 A&A 535, A103',exgal_sources='PKS 1830-211 LOS',Bcon=23249,mua='*')
+COp = Molecule('carbon monoxide cation','CO+',1993,'CO+','M17SW, NGC 7027','NRAO 12-m','mm',cation=True,C=1,O=1,d_ref='Latter et al. 1993 ApJ 419, L97',lab_ref='Sastry et al. 1981 ApJ 250, L91',notes=None,exgal=True,exgal_d_ref='Fuente et al. 2006 ApJ 641, L105',exgal_sources='M82',Bcon=58983,mua=2.6)
+HF = Molecule('hydrogen fluoride','HF',1997,'HF','Sgr B2 LOS','ISO','IR',neutral=True,H=1,F=1,d_ref='Neufeld et al. 1997 ApJ 488, L141',lab_ref='Nolt et al. 1987 JMS 125, 274',notes=None,exgal=True,exgal_d_ref='van der Werf et al. 2010 A&A 518, L42; Rangwala et al. 2011 ApJ 743, 94; Monje et al. 2011 ApJL 742, L21',exgal_sources='Mrk 231, Arp 220, Cloverleaf LOS',Bcon=616365,mua=1.8)
+N2 = Molecule('nitrogen','N2',2004,'N2','HD 124314 LOS','FUSE','UV',neutral=True,N=2,d_ref='Knauth et al. 2004 Nature 409, 636',lab_ref='Stark et al. 2000 ApJ 531, 321',notes=None,mua=0.0)
+CFp = Molecule('fluoromethylidynium cation','CF+',2006,'CF+','Orion Bar','IRAM, APEX','mm',cation=True,C=1,F=1,d_ref='Neufeld et al. 2006 A&A 454, L37',lab_ref='Plummer et al. 1986 JCP 84, 2427',notes=None,exgal=True,exgal_d_ref='Muller et al. 2016 A&A 589, L5',exgal_sources='PKS 1830-211 LOS',Bcon=51294,mua=1.1)
+PO = Molecule('phosphorous monoxide','PO',2007,'PO','VY Ca Maj','SMT','mm',neutral=True,O=1,P=1,d_ref='Tenenbaum et al. 2007 ApJ 666, L29',lab_ref='Bailleux et al. 2002 JMS 216, 465',notes=None,Bcon=21900,mua=1.9)
+O2 = Molecule('oxygen','O2',2007,'O2','Orion, rho Oph A','Odin, Herschel','mm, sub-mm',neutral=True,O=2,d_ref='Larsson et al. 2007 A&A 466, 999',lab_ref='Endo & Mizushima 1982 Jpn J Appl Phys 21, L379; Drouin et al. 2010 J Quant Spec Rad Transf 111, 1167',notes='*Also Larsson et al. 2007 A&A 466, 999; Tentative in Goldsmith 2002 ApJ 576, 814',mua=0.0)
+AlO = Molecule('aluminum monoxide','AlO',2009,'AlO','VY Ca Maj','SMT','mm',neutral=True,O=1,Al=1,d_ref='Tenenbaum & Ziurys 2009 ApJ 693, L59',lab_ref='Yamada et al. 1990, JCP 92, 2146',notes=None,Bcon=19142,mua=4.6)
+CNm = Molecule('cyanide anion','CN-',2010,'CN-','IRC+10216','IRAM','mm',anion=True,C=1,N=1,d_ref='Agúndez et al. 2010 A&A 517, L2',lab_ref='Amano 2008 JCP 129, 244305',notes=None,Bcon=56133,mua=0.7)
+OHp = Molecule('hydroxyl cation','OH+',2010,'OH+','Sgr B2 LOS','APEX','sub-mm',cation=True,H=1,O=1,d_ref='Wyrowski et al. 2010 A&A 518, A26; Gerin et al. 2010 A&A 518, L110; Benz et al. 2010 A&A 521, L35',lab_ref='Bekooy et al. 1985 JCP 82, 3868',notes=None,exgal=True,exgal_d_ref='van der Werf et al. 2010 A&A 518, L42; Rangwala et al. 2011 ApJ 743, 94; Gonzalez-Alfonso et al. 2013 A&A 550, A25',exgal_sources='Mrk 231, Arp 220, NGC 4418',Bcon=492346,mua=2.3)
+SHp = Molecule('sulfanylium cation','SH+',2011,'SH+','Sgr B2','Herschel','sub-mm',cation=True,H=1,S=1,d_ref='Benz et al. 2010 A&A 521, L35',lab_ref='Brown et al. 2009 JMS 255, 68',notes='*Also in Menten et al. 2011 A&A 525, A77',exgal=True,exgal_d_ref='Muller et al. 2017 A&A 606, A109',exgal_sources='PKS 1830-211',Bcon=273810,mua=1.3)
+HClp = Molecule('hydrogen chloride cation','HCl+',2012,'HCl+','W31 LOS, W49 LOS','Herschel','sub-mm',cation=True,H=1,Cl=1,d_ref='de Luca et al. 2012 ApJ 751, L37',lab_ref='Gupta et al. 2012 ApJ 751, L38',notes=None,Bcon=293444,mua=1.8)
+SH = Molecule('mercapto radical','SH',2012,'SH','W49 LOS','SOFIA','sub-mm',radical=True,neutral=True,H=1,S=1,d_ref='Neufeld et al. 2012 A&A 542, L6',lab_ref='Morino & Kawaguchi 1995 JMS 170, 172; Klisch et al. 1996 ApJ 473, 1118',notes=None,Bcon=283588,mua=0.8)
+TiO = Molecule('titanium monoxide','TiO',2013,'TiO','VY Ca Maj','SMA','mm',neutral=True,O=1,Ti=1,d_ref='Kamiński et al. 2013 A&A 551, A113',lab_ref='Nakimi et al. 1998 JMS 191, 176',notes=None,exo=True,exo_d_ref='Haynes et al. 2015 ApJ 806, 146; Sedaghati et al. 2017 Nature 549, 238; Nugroho et al. 2017 ApJ 154, 221',Bcon=16004,mua=3.3)
+ArHp = Molecule('argonium','ArH+',2013,'ArH+','Crab Nebula','Herschel','sub-mm',cation=True,H=1,Ar=1,d_ref='Barlow et al. 2013 Science 342, 1343',lab_ref='Barlow et al. 2013 Science 342, 1343',notes=None,exgal=True,exgal_d_ref='Muller et al. 2015 A&A 582, L4',exgal_sources='PKS 1830-211 LOS',Bcon=307966,mua=2.2)
+NSp = Molecule('nitrogen sulfide cation','NS+',2018,'NS+','B1-b, TMC-1, L483','IRAM','mm',cation=True,N=1,S=1,d_ref='Cernicharo et al. 2018 ApJL 853, L22',lab_ref='Cernicharo et al. 2018 ApJL 853, L22',notes=None,Bcon=25050,mua=2.2)
 
 two_atom_list = [CH,CN,CHp,OH,CO,H2,SiO,CS,SO,SiS,NS,C2,NO,HCl,NaCl,AlCl,KCl,AlF,PN,SiC,CP,NH,SiN,SOp,COp,HF,N2,CFp,PO,O2,AlO,CNm,OHp,SHp,HClp,SH,TiO,ArHp,NSp]
 
@@ -211,49 +224,49 @@ two_atom_list = [CH,CN,CHp,OH,CO,H2,SiO,CS,SO,SiS,NS,C2,NO,HCl,NaCl,AlCl,KCl,AlF
 #					Three Atom Molecules					#
 #############################################################	
 
-H2O = Molecule('water','H2O',1969,'H2O','Sgr B2, Orion, W49','Hat Creek','cm',neutral=True,H=2,O=1,d_ref='Cheung et al. 1969 Nature 221, 626',lab_ref='Golden et al. 1948 Phys Rev 73, 92',notes=None,ice=True,ice_d_ref='Gillett & Forrest 1973 ApJ 179, 483',ice_l_ref='Irvine & Pollack 1968 Icarus 8, 324',isos='HDO',isos_d_ref='[HDO] Turner et al. 1975 ApJ 198, L125',isos_l_ref='[HDO] de Lucia et al. 1974 J Phys Chem Ref Data 3, 211; Erlandsson & Cox 1956 J Chem Phys 25, 778',ppd=True,ppd_d_ref='Carr et al. 2004 ApJ 603, 213; Hogerheijde et al. 2011 Science 344, 338',exo=True,exo_d_ref='Tinetti et al. 2007 Nature 448, 169; Deming et al. 2014 ApJ 774, 95; Kreidberg et al. 2014 ApJL 793, L27; Kreidberg et al. 2015 ApJ 814, 66; Lockwood et al. 2014 ApJ 783, L29',exgal=True,exgal_d_ref='Churchwell et al. 1977 A&A 54, 969',exgal_sources='M33')
-HCOp = Molecule('formylium cation','HCO+',1970,'HCO+','W3(OH), Orion, L134, Sgr A, W51','NRAO 36-ft','mm',cation=True,H=1,C=1,O=1,d_ref='Buhl & Snyder 1970 Nature 228, 267',lab_ref='Woods et al. 1975 PRL 35, 1269',notes=None,ppd=True,ppd_d_ref='Kastner et al. 1997 Science 277, 67; Dutrey et al. 1997 A&A 317, L55',ppd_isos='DCO+, H13CO+',ppd_isos_ref='[DCO+] van Dishoeck et al. 2003 A&A 400, L1 [H13CO+] van Zadelhoff et al. 2001 A&A 377, 566; van Dishoeck et al. 2003 A&A 400, L1',exgal=True,exgal_d_ref='Stark et al. 1979 ApJ 229, 118',exgal_sources='M82')
-HCN = Molecule('hydrogen cyanide','HCN',1971,'HCN','W3(OH), Orion, Sgr A, W49, W51, DR 21','NRAO 36-ft','mm',neutral=True,H=1,C=1,N=1,d_ref='Snyder et al. 1971 ApJ 163, L47',lab_ref='de Lucia & Gordy 1969 Phys Rev 187, 58',notes=None,ppd=True,ppd_d_ref='Kastner et al. 1997 Science 277, 67; Dutrey et al. 1997 A&A 317, L55',ppd_isos='DCN, H13CN, HC15N',ppd_isos_ref='[DCN] Qi et al. 2008 ApJ 681, 1396 [H13CN] Guzman et al. 2015 ApJ 814, 53 [HC15N] Guzman et al. 2015 ApJ 814, 53',exgal=True,exgal_d_ref='Rickard et al. 1977 ApJ 214, 390',exgal_sources='NGC 253, M82',exo=True,exo_d_ref='Hawker et al. 2018 ApJL 863, L11')
-OCS = Molecule('carbonyl sulfide','OCS',1971,'OCS','Sgr B2','NRAO 36-ft','mm',neutral=True,C=1,O=1,S=1,d_ref='Jefferts et al. 1971 ApJ 168, L111',lab_ref='King & Gordy 1954 Phys Rev 93, 407',notes=None,ice=True,ice_d_ref='Palumbo et al. 1995 ApJ 449, 674; Palumbo et al. 1997 ApJ 479, 839',ice_l_ref='Palumbo et al. 1995 ApJ 449, 674',exgal=True,exgal_d_ref='Mauersberger et al. 1995 A&A 294, 23',exgal_sources='NGC 253')
-HNC = Molecule('hydrogen isocyanide','HNC',1972,'HNC','W51, NGC 2264','NRAO 36-ft','mm',neutral=True,H=1,C=1,N=1,d_ref='Snyder & Buhl 1972 Annals of the New York Academy of Science 194, 17; Zuckerman et al. 1972 ApJ 173, L125',lab_ref='Blackman et al. 1976 Nature 261, 395',notes=None,ppd=True,ppd_d_ref='Dutrey et al. 1997 A&A 317, L55',exgal=True,exgal_d_ref='Henkel et al. 1988 A&A 201, L23',exgal_sources='IC 342')
-H2S = Molecule('hydrogen sulfide','H2S',1972,'H2S','W3, W3(OH), Orion, NGC 2264, Sgr B2, W51, DR 21(OH), NGC 7538','NRAO 36-ft','mm',neutral=True,H=2,S=1,d_ref='Thaddeus et al. 1972 ApJ 176, L73',lab_ref='Cupp et al. 1968 Phys Rev 171, 60',notes=None,exgal=True,exgal_d_ref='Hekkila et al. 1999 A&A 344, 817',exgal_sources='LMC',ppd=True,ppd_d_ref='Phuong et al. 2018 A&A 616, L5')
-N2Hp = Molecule('protonated nitrogen','N2H+',1974,'N2H+','Sgr B2, DR 21, NGC 6334, NGC 2264','NRAO 36-ft','mm',cation=True,H=1,N=2,d_ref='Turner 1974 ApJ 193, L83; Green et al. 1974 ApJ 193, L89; Thaddues & Turner 1975 ApJ 201, L25',lab_ref='Saykally et al. 1976 ApJ 205, L101',notes=None,ppd=True,ppd_d_ref='Qi et al. 2003 ApJ 597, 986; Dutrey et al. 2007 A&A 464, 615',ppd_isos='N2D+',ppd_isos_ref='[N2D+] Huang et al. 2015 ApJL 809, L26',exgal=True,exgal_d_ref='Mauersberger & Henkel 1991 A&A 245, 457',exgal_sources='NGC 253, Maffei 2, IC 342, M82, NGC 6946')
-C2H = Molecule('ethynyl radical','C2H',1974,'C2H','Orion','NRAO 36-ft','mm',radical=True,neutral=True,H=1,C=2,d_ref='Tucker et al. 1974 ApJ 193, L115',lab_ref='Sastry et al. 1981 ApJ 251, L119',notes=None,ppd=True,ppd_d_ref='Dutrey et al. 1997 A&A 317, L55',exgal=True,exgal_d_ref='Henkel et al. 1988 A&A 201, L23',exgal_sources='M82')
-SO2 = Molecule('sulfur dioxide','SO2',1975,'SO2','Orion, Sgr B2','NRAO 36-ft','mm',neutral=True,O=2,S=1,d_ref='Snyder et al. 1975 ApJ 198, L81',lab_ref='Steenbeckeliers 1968 Ann. Soc. Sci. Brux 82, 331',notes=None,exgal=True,exgal_d_ref='Martin et al. 2003 A&A 411, L465',exgal_sources='NGC 253')
-HCO = Molecule('formyl radical','HCO',1976,'HCO','W3, NGC 2024, W51, K3-50','NRAO 36-ft','mm',radical=True,neutral=True,H=1,C=1,O=1,d_ref='Snyder et al. 1976 ApJ 208, L91',lab_ref='Saito 1972 ApJ 178, L95',notes=None,exgal=True,exgal_d_ref='Sage & Ziurys 1995 ApJ 447, 625; Garcia-Burillo et al. 2002 ApJ 575, L55',exgal_sources='M82')
-HNO = Molecule('nitroxyl radical','HNO',1977,'HNO','Sgr B2, NGC 2024','NRAO 36-ft','mm',neutral=True,H=1,O=1,N=1,d_ref='Ulich et al. 1977 ApJ 217, L105',lab_ref='Saito & Takagi 1973 JMS 47, 99',notes=None)
-HCSp = Molecule('protonated carbon monosulfide','HCS+',1981,'HCS+','Orion, Sgr B2','NRAO 36-ft, Bell 7-m','mm',cation=True,H=1,C=1,S=1,d_ref='Thaddeus et al. 1981 ApJ 246, L41',lab_ref='Gudeman et al. 1981 ApJ 246, L47',notes=None,exgal=True,exgal_d_ref='Muller et al. 2013 A&A 551, A109',exgal_sources='PKS 1830-211 LOS')
-HOCp = Molecule('hydroxymethyliumylidene','HOC+',1983,'HOC+','Sgr B2','FCRAO 14-m, Onsala','mm',cation=True,H=1,C=1,O=1,d_ref='Woods et al. 1983 ApJ 270, 583',lab_ref='Gudeman et al. 1982 PRL 48, 1344',notes='*Confirmed in 1995 ApJ 455, L73',exgal=True,exgal_d_ref='Usero et al. 2004 A&A 419, 897',exgal_sources='NGC 1068')
-SiC2 = Molecule('silacyclopropynylidene','SiC2',1984,'SiC2','IRC+10216','NRAO 36-ft, Bell 7-m','mm',cyclic=True,radical=True,neutral=True,C=2,Si=1,d_ref='Thaddeus et al. 1984 ApJ 283, L45',lab_ref='Michalopoulos et al. 1984 JCP 80, 3556',notes=None)
-C2S = Molecule('dicarbon sulfide','C2S',1987,'C2S','TMC-1, IRC+10216, Sgr B2','Nobeyama, IRAM','cm, mm',radical=True,neutral=True,C=2,S=1,d_ref='Saito et al. 1987 ApJ 317, L115',lab_ref='Saito et al. 1987 ApJ 317, L115',notes='*Also Cernicharo et al. 1987 A&A 181, L9',exgal=True,exgal_d_ref='Martin et al. 2006 ApJS 164, 450',exgal_sources='NGC 253')
-C3 = Molecule('tricarbon','C3',1988,'C3','IRC+10216','KPNO 4-m','IR',neutral=True,C=3,d_ref='Hinkle et al. 1988 Science 241, 1319',lab_ref='Gausset et al. 1965 ApJ 142, 45',exgal=True,exgal_d_ref='Welty et al. 2012 MNRAS 428, 1107', exgal_sources='SMC',notes=None)
-CO2 = Molecule('carbon dioxide','CO2',1989,'CO2','AFGL 961 LOS, AFGL 989 LOS, AFGL 890 LOS','IRAS','IR',neutral=True,C=1,O=2,d_ref='d\'Hendecourt & Jourdain de Muizon 1989 A&A 223, L5; van Dishoeck et al. 1996 A&A 315, L349',lab_ref='d\'Hendecourt & Allamandola 1986 A&A Sup. Ser. 64, 453; Paso et al. 1980 JMS 79, 236; Reichle & Young 1972 Can J Phys 50, 2662',notes='*First detected in ices, then in gas phase',ice=True,ice_d_ref='d\'Hendecourt & Jourdain de Muizon 1989 A&A 223, L5',ice_l_ref='d\'Hendecourt & Allamandola 1986 A&A Sup. Ser. 64, 453',ppd=True,ppd_d_ref='Carr & Najita 2008 Science 319, 1504',exo=True,exo_d_ref='Stevenson et al. 2010 Nature 464, 1161; Madhusudhan et al. 2011 Nature 469, 64; Lanotte et al. 2014 A&A 572, A73')
-CH2 = Molecule('methylene','CH2',1989,'CH2','Orion','NRAO 12-m','mm',radical=True,neutral=True,H=2,C=1,d_ref='Hollis et al. 1989 ApJ 346, 794',lab_ref='Lovas et al. 1983 ApJ 267, L131',notes='*Confirmed in 1995 ApJ 438, 259')
-C2O = Molecule('dicarbon monoxide','C2O',1991,'C2O','TMC-1','Nobeyama','cm',radical=True,neutral=True,C=2,O=1,d_ref='Ohishi et al. 1991 ApJ 380, L39',lab_ref='Yamada et al. 1985 ApJ 290, L65',notes=None)
-MgNC = Molecule('magnesium isocyanide','MgNC',1993,'MgNC','IRC+10216','IRAM','mm',radical=True,neutral=True,C=1,N=1,Mg=1,d_ref='Guélin et al. 1986 A&A 157, L17',lab_ref='Kawaguchi et al. 1993 ApJ 406, L39',notes='*Actually identified in Kawaguchi et al. 1993 ApJ 406, L39 and Guélin et al. 1993 A&A 280, L19')
-NH2 = Molecule('amidogen','NH2',1993,'NH2','Sgr B2 LOS','CSO','sub-mm',radical=True,neutral=True,H=2,N=1,d_ref='van Dishoeck et al. 1993 ApJ 416, L83',lab_ref='Charo et al. 1981 ApJ 244, L111',notes=None,exgal=True,exgal_d_ref='Muller et al. 2014 A&A 566, A112',exgal_sources='PKS 1830-211 LOS')
-NaCN = Molecule('sodium cyanide','NaCN',1994,'NaCN','IRC+10216','NRAO 12-m','mm',neutral=True,C=1,N=1,Na=1,d_ref='Turner et al. 1994 ApJ 426, L97',lab_ref='van Vaals et al. 1984 Chem Phys 86, 147',notes=None)
-N2O = Molecule('nitrous oxide','N2O',1994,'N2O','Sgr B2','NRAO 12-m','mm',neutral=True,O=1,N=2,d_ref='Ziurys et al. 1994 ApJ 436, L181',lab_ref='Lovas 1978 J Phys Chem Ref Data 7, 1445',notes=None)
-MgCN = Molecule('magnesium cyanide','MgCN',1995,'MgCN','IRC+10216','NRAO 12-m, IRAM','mm',radical=True,neutral=True,C=1,N=1,Mg=1,d_ref='Ziurys et al. 1995 ApJ 445, L47',lab_ref='Anderson et al. 1994 ApJ 429, L41',notes=None)
-H3p = Molecule('','H3+',1996,'H3+','GL2136 LOS, W33 LOS','UKIRT','IR',cation=True,H=3,d_ref='Geballe & Oka 1996 Nature 384, 334',lab_ref='Oka 1980 PRL 45, 531',notes=None,exgal=True,exgal_d_ref='Geballe et al. 2006 ApJ 644, 907',exgal_sources='IRAS 08572+3915')
-SiCN = Molecule('silicon monocyanide radical','SiCN',2000,'SiCN','IRC+10216','IRAM','mm',radical=True,neutral=True,C=1,N=1,Si=1,d_ref='Guélin et al. 2000 A&A 363, L9',lab_ref='Apponi et al. 2000 ApJ 536, L55',notes=None)
-AlNC = Molecule('aluminum isocyanide','AlNC',2002,'AlNC','IRC+10216','IRAM','mm',neutral=True,C=1,N=1,Al=1,d_ref='Ziurys et al. 2002 ApJ 564, L45',lab_ref='Robinson et al. 1997 Chem Phys Lett 278, 1',notes=None)
-SiNC = Molecule('silicon monoisocyanide','SiNC',2004,'SiNC','IRC+10216','IRAM','mm',radical=True,neutral=True,C=1,N=1,Si=1,d_ref='Guélin et al. 2004 A&A 426, L49',lab_ref='Apponi et al. 2000 ApJ 536, L55',notes=None)
-HCP = Molecule('phosphaethyne','HCP',2007,'HCP','IRC+10216','IRAM','mm',neutral=True,H=1,C=1,P=1,d_ref='Agúndez et al. 2007 ApJ 662, L91',lab_ref='Bizzocchi et al. 2001 JMS 205, 110',notes='*First attempt 1990 ApJ 365, 59. Confirmed 2008 ApJ 684, 618')
-CCP = Molecule('dicarbon phosphide radical','CCP',2008,'CCP','IRC+10216','ARO 12-m','mm',radical=True,neutral=True,C=2,P=1,d_ref='Halfen et al. 2008 ApJ 677, L101',lab_ref='Halfen et al. 2008 ApJ 677, L101',notes=None)
-AlOH = Molecule('aluminum hydroxide','AlOH',2010,'AlOH','VY Ca Maj','ARO 12-m, SMT','mm',neutral=True,H=1,O=1,Al=1,d_ref='Tenenbaum & Ziurys 2010 ApJ 712, L93',lab_ref='Apponi et al. 1993 ApJ 414, L129',notes=None)
-H2Op = Molecule('oxidaniumyl','H2O+',2010,'H2O+','Sgr B2, Sgr B2 LOS, NGC 6334, DR 21','Herschel','sub-mm',cation=True,H=2,O=1,d_ref='Ossenkopf et al. 2010 A&A 518, L111; Gerin et al. 2010 A&A 518, L110',lab_ref='Strahan et al. 1986 JCP 85, 1252; Murtz et al. 1998 JCP 109, 9744 ',notes=None,exgal=True,exgal_d_ref='Weiss et al. 2010 A&A 521, L1',exgal_sources='M82')
-H2Clp = Molecule('chloronium','H2Cl+',2010,'H2Cl+','Sgr B2, Sgr B2 LOS, NGC 6334, NGC 6334 LOS','Herschel','sub-mm',cation=True,H=2,Cl=1,d_ref='Lis et al. 2010 A&A 521, L9',lab_ref='Araki et al. 2001 JMS 210, 132',notes=None,exgal=True,exgal_d_ref='Muller et al. 2014 A&A 566, L6',exgal_sources='PKS 1830-211 LOS')
-KCN = Molecule('potassium cyanide','KCN',2010,'KCN','IRC+10216','ARO 12-m, SMT, IRAM','mm',neutral=True,C=1,N=1,K=1,d_ref='Pulliam et al. 2010 ApJ 727, L181',lab_ref='Torring et al. 1980 JCP 73, 4875',notes=None)
-FeCN = Molecule('iron cyanide','FeCN',2011,'FeCN','IRC+10216','ARO 12-m','mm',neutral=True,C=1,N=1,Fe=1,d_ref='Zack et al. 2011 ApJ 733, L36',lab_ref='Flory & Ziurys 2011 JCP 135, 184303',notes=None)
-HO2 = Molecule('hydroperoxyl radical','HO2',2012,'HO2','rho Oph A','IRAM, APEX','mm',radical=True,neutral=True,H=1,O=2,d_ref='Parise et al. 2012 A&A 541, L11',lab_ref='Beers & Howard 1975 JCP 63, 4212; Saito 1977 JMS 65, 229; Charo & de Lucia 1982 JMS 94, 426',notes=None)
-TiO2 = Molecule('titanium dioxide','TiO2',2013,'TiO2','VY Ca Maj','SMA, PdBI','mm',neutral=True,O=1,Ti=1,d_ref='Kamiński et al. 2013 A&A 551, A113',lab_ref='Brunken 2008 APJ 676, 1367; Kania et al. 2011 JMS 268, 173',notes=None)
-CCN = Molecule('cyanomethylidyne','CCN',2014,'CCN','IRC+10216','ARO 12-m, SMT','mm',radical=True,neutral=True,C=2,N=1,d_ref='Anderson & Ziurys 2014 ApJ 795, L1',lab_ref='Anderson et al. 2015 JMS 307, 1',notes=None)
-SiCSi = Molecule('disilicon carbide','SiCSi',2015,'SiCSi','IRC+10216','IRAM','mm',neutral=True,C=1,Si=2,d_ref='Cernicharo et al. 2015 ApJ 806, L3',lab_ref='McCarthy 2015 JPC Lett 6, 2107',notes=None)
-S2H = Molecule('hydrogen disulfide','S2H',2017,'S2H','Horsehead PDR','IRAM','mm',neutral=True,H=1,S=2,d_ref='Fuente et al. 2017 ApJ 851, L49',lab_ref='Tanimoto et al. 2000 JMS 199, 73',notes=None)
-HCS = Molecule('thioformyl','HCS',2018,'HCS','L483','IRAM','mm',radical=True,neutral=True,H=1,C=1,S=1,d_ref='Agúndez et al. 2018 A&A 611, L1',lab_ref='Habara et al. 2002 JCP 116, 9232',notes=None)
-HSC = Molecule('sulfhydryl carbide','HSC',2018,'HSC','L483','IRAM','mm',radical=True,neutral=True,H=1,C=1,S=1,d_ref='Agúndez et al. 2018 A&A 611, L1',lab_ref='Habara 2000 JCP 112, 10905',notes=None)
-NCO = Molecule('isocyanate radical','NCO',2018,'NCO','L483','IRAM','mm',radical=True,neutral=True,C=1,O=1,N=1,d_ref='Marcelino et al. 2018 A&A 612, L10',lab_ref='Kawaguchi et al. 1985 Mol Phys 55, 341; Saito and Amano 1970 JMS34, 383',notes=None)
+H2O = Molecule('water','H2O',1969,'H2O','Sgr B2, Orion, W49','Hat Creek','cm',neutral=True,H=2,O=1,d_ref='Cheung et al. 1969 Nature 221, 626',lab_ref='Golden et al. 1948 Phys Rev 73, 92',notes=None,ice=True,ice_d_ref='Gillett & Forrest 1973 ApJ 179, 483',ice_l_ref='Irvine & Pollack 1968 Icarus 8, 324',isos='HDO',isos_d_ref='[HDO] Turner et al. 1975 ApJ 198, L125',isos_l_ref='[HDO] de Lucia et al. 1974 J Phys Chem Ref Data 3, 211; Erlandsson & Cox 1956 J Chem Phys 25, 778',ppd=True,ppd_d_ref='Carr et al. 2004 ApJ 603, 213; Hogerheijde et al. 2011 Science 344, 338',exo=True,exo_d_ref='Tinetti et al. 2007 Nature 448, 169; Deming et al. 2014 ApJ 774, 95; Kreidberg et al. 2014 ApJL 793, L27; Kreidberg et al. 2015 ApJ 814, 66; Lockwood et al. 2014 ApJ 783, L29',exgal=True,exgal_d_ref='Churchwell et al. 1977 A&A 54, 969',exgal_sources='M33',Acon=835840,Bcon=435352,Ccon=278139,mub=1.9)
+HCOp = Molecule('formylium cation','HCO+',1970,'HCO+','W3(OH), Orion, L134, Sgr A, W51','NRAO 36-ft','mm',cation=True,H=1,C=1,O=1,d_ref='Buhl & Snyder 1970 Nature 228, 267',lab_ref='Woods et al. 1975 PRL 35, 1269',notes=None,ppd=True,ppd_d_ref='Kastner et al. 1997 Science 277, 67; Dutrey et al. 1997 A&A 317, L55',ppd_isos='DCO+, H13CO+',ppd_isos_ref='[DCO+] van Dishoeck et al. 2003 A&A 400, L1 [H13CO+] van Zadelhoff et al. 2001 A&A 377, 566; van Dishoeck et al. 2003 A&A 400, L1',exgal=True,exgal_d_ref='Stark et al. 1979 ApJ 229, 118',exgal_sources='M82',Bcon=44594,mua=3.9)
+HCN = Molecule('hydrogen cyanide','HCN',1971,'HCN','W3(OH), Orion, Sgr A, W49, W51, DR 21','NRAO 36-ft','mm',neutral=True,H=1,C=1,N=1,d_ref='Snyder et al. 1971 ApJ 163, L47',lab_ref='de Lucia & Gordy 1969 Phys Rev 187, 58',notes=None,ppd=True,ppd_d_ref='Kastner et al. 1997 Science 277, 67; Dutrey et al. 1997 A&A 317, L55',ppd_isos='DCN, H13CN, HC15N',ppd_isos_ref='[DCN] Qi et al. 2008 ApJ 681, 1396 [H13CN] Guzman et al. 2015 ApJ 814, 53 [HC15N] Guzman et al. 2015 ApJ 814, 53',exgal=True,exgal_d_ref='Rickard et al. 1977 ApJ 214, 390',exgal_sources='NGC 253, M82',exo=True,exo_d_ref='Hawker et al. 2018 ApJL 863, L11',Bcon=44316,mua=3.0)
+OCS = Molecule('carbonyl sulfide','OCS',1971,'OCS','Sgr B2','NRAO 36-ft','mm',neutral=True,C=1,O=1,S=1,d_ref='Jefferts et al. 1971 ApJ 168, L111',lab_ref='King & Gordy 1954 Phys Rev 93, 407',notes=None,ice=True,ice_d_ref='Palumbo et al. 1995 ApJ 449, 674; Palumbo et al. 1997 ApJ 479, 839',ice_l_ref='Palumbo et al. 1995 ApJ 449, 674',exgal=True,exgal_d_ref='Mauersberger et al. 1995 A&A 294, 23',exgal_sources='NGC 253',Bcon=6081,mua=0.7)
+HNC = Molecule('hydrogen isocyanide','HNC',1972,'HNC','W51, NGC 2264','NRAO 36-ft','mm',neutral=True,H=1,C=1,N=1,d_ref='Snyder & Buhl 1972 Annals of the New York Academy of Science 194, 17; Zuckerman et al. 1972 ApJ 173, L125',lab_ref='Blackman et al. 1976 Nature 261, 395',notes=None,ppd=True,ppd_d_ref='Dutrey et al. 1997 A&A 317, L55',exgal=True,exgal_d_ref='Henkel et al. 1988 A&A 201, L23',exgal_sources='IC 342',Bcon=45332,mua=3.1)
+H2S = Molecule('hydrogen sulfide','H2S',1972,'H2S','W3, W3(OH), Orion, NGC 2264, Sgr B2, W51, DR 21(OH), NGC 7538','NRAO 36-ft','mm',neutral=True,H=2,S=1,d_ref='Thaddeus et al. 1972 ApJ 176, L73',lab_ref='Cupp et al. 1968 Phys Rev 171, 60',notes=None,exgal=True,exgal_d_ref='Hekkila et al. 1999 A&A 344, 817',exgal_sources='LMC',ppd=True,ppd_d_ref='Phuong et al. 2018 A&A 616, L5',Acon=310584,Bcon=270368,Ccon=141820,mub=1.0)
+N2Hp = Molecule('protonated nitrogen','N2H+',1974,'N2H+','Sgr B2, DR 21, NGC 6334, NGC 2264','NRAO 36-ft','mm',cation=True,H=1,N=2,d_ref='Turner 1974 ApJ 193, L83; Green et al. 1974 ApJ 193, L89; Thaddues & Turner 1975 ApJ 201, L25',lab_ref='Saykally et al. 1976 ApJ 205, L101',notes=None,ppd=True,ppd_d_ref='Qi et al. 2003 ApJ 597, 986; Dutrey et al. 2007 A&A 464, 615',ppd_isos='N2D+',ppd_isos_ref='[N2D+] Huang et al. 2015 ApJL 809, L26',exgal=True,exgal_d_ref='Mauersberger & Henkel 1991 A&A 245, 457',exgal_sources='NGC 253, Maffei 2, IC 342, M82, NGC 6946',Bcon=46587,mua=3.4)
+C2H = Molecule('ethynyl radical','C2H',1974,'C2H','Orion','NRAO 36-ft','mm',radical=True,neutral=True,H=1,C=2,d_ref='Tucker et al. 1974 ApJ 193, L115',lab_ref='Sastry et al. 1981 ApJ 251, L119',notes=None,ppd=True,ppd_d_ref='Dutrey et al. 1997 A&A 317, L55',exgal=True,exgal_d_ref='Henkel et al. 1988 A&A 201, L23',exgal_sources='M82',Bcon=43675,mua=0.8)
+SO2 = Molecule('sulfur dioxide','SO2',1975,'SO2','Orion, Sgr B2','NRAO 36-ft','mm',neutral=True,O=2,S=1,d_ref='Snyder et al. 1975 ApJ 198, L81',lab_ref='Steenbeckeliers 1968 Ann. Soc. Sci. Brux 82, 331',notes=None,exgal=True,exgal_d_ref='Martin et al. 2003 A&A 411, L465',exgal_sources='NGC 253',Acon=60779,Bcon=10318,Ccon=8800,mub=1.6)
+HCO = Molecule('formyl radical','HCO',1976,'HCO','W3, NGC 2024, W51, K3-50','NRAO 36-ft','mm',radical=True,neutral=True,H=1,C=1,O=1,d_ref='Snyder et al. 1976 ApJ 208, L91',lab_ref='Saito 1972 ApJ 178, L95',notes=None,exgal=True,exgal_d_ref='Sage & Ziurys 1995 ApJ 447, 625; Garcia-Burillo et al. 2002 ApJ 575, L55',exgal_sources='M82',Acon=7829365,Bcon=44788,Ccon=41930,mua=1.4,mub=0.7)
+HNO = Molecule('nitroxyl radical','HNO',1977,'HNO','Sgr B2, NGC 2024','NRAO 36-ft','mm',neutral=True,H=1,O=1,N=1,d_ref='Ulich et al. 1977 ApJ 217, L105',lab_ref='Saito & Takagi 1973 JMS 47, 99',notes=None,Acon=553899,Bcon=42313,Ccon=39165,mua=1.0,mub=1.3)
+HCSp = Molecule('protonated carbon monosulfide','HCS+',1981,'HCS+','Orion, Sgr B2','NRAO 36-ft, Bell 7-m','mm',cation=True,H=1,C=1,S=1,d_ref='Thaddeus et al. 1981 ApJ 246, L41',lab_ref='Gudeman et al. 1981 ApJ 246, L47',notes=None,exgal=True,exgal_d_ref='Muller et al. 2013 A&A 551, A109',exgal_sources='PKS 1830-211 LOS',Bcon=10691,mua=1.9)
+HOCp = Molecule('hydroxymethyliumylidene','HOC+',1983,'HOC+','Sgr B2','FCRAO 14-m, Onsala','mm',cation=True,H=1,C=1,O=1,d_ref='Woods et al. 1983 ApJ 270, 583',lab_ref='Gudeman et al. 1982 PRL 48, 1344',notes='*Confirmed in 1995 ApJ 455, L73',exgal=True,exgal_d_ref='Usero et al. 2004 A&A 419, 897',exgal_sources='NGC 1068',Bcon=44744,mua=4.0)
+SiC2 = Molecule('silacyclopropynylidene','SiC2',1984,'SiC2','IRC+10216','NRAO 36-ft, Bell 7-m','mm',cyclic=True,radical=True,neutral=True,C=2,Si=1,d_ref='Thaddeus et al. 1984 ApJ 283, L45',lab_ref='Michalopoulos et al. 1984 JCP 80, 3556',notes=None,Acon=52474,Bcon=13157,Ccon=10443,mua=2.4)
+C2S = Molecule('dicarbon sulfide','C2S',1987,'C2S','TMC-1, IRC+10216, Sgr B2','Nobeyama, IRAM','cm, mm',radical=True,neutral=True,C=2,S=1,d_ref='Saito et al. 1987 ApJ 317, L115',lab_ref='Saito et al. 1987 ApJ 317, L115',notes='*Also Cernicharo et al. 1987 A&A 181, L9',exgal=True,exgal_d_ref='Martin et al. 2006 ApJS 164, 450',exgal_sources='NGC 253',Bcon=6478,mua=2.9)
+C3 = Molecule('tricarbon','C3',1988,'C3','IRC+10216','KPNO 4-m','IR',neutral=True,C=3,d_ref='Hinkle et al. 1988 Science 241, 1319',lab_ref='Gausset et al. 1965 ApJ 142, 45',exgal=True,exgal_d_ref='Welty et al. 2012 MNRAS 428, 1107', exgal_sources='SMC',notes=None,mua=0.0)
+CO2 = Molecule('carbon dioxide','CO2',1989,'CO2','AFGL 961 LOS, AFGL 989 LOS, AFGL 890 LOS','IRAS','IR',neutral=True,C=1,O=2,d_ref='d\'Hendecourt & Jourdain de Muizon 1989 A&A 223, L5; van Dishoeck et al. 1996 A&A 315, L349',lab_ref='d\'Hendecourt & Allamandola 1986 A&A Sup. Ser. 64, 453; Paso et al. 1980 JMS 79, 236; Reichle & Young 1972 Can J Phys 50, 2662',notes='*First detected in ices, then in gas phase',ice=True,ice_d_ref='d\'Hendecourt & Jourdain de Muizon 1989 A&A 223, L5',ice_l_ref='d\'Hendecourt & Allamandola 1986 A&A Sup. Ser. 64, 453',ppd=True,ppd_d_ref='Carr & Najita 2008 Science 319, 1504',exo=True,exo_d_ref='Stevenson et al. 2010 Nature 464, 1161; Madhusudhan et al. 2011 Nature 469, 64; Lanotte et al. 2014 A&A 572, A73',mua=0.0)
+CH2 = Molecule('methylene','CH2',1989,'CH2','Orion','NRAO 12-m','mm',radical=True,neutral=True,H=2,C=1,d_ref='Hollis et al. 1989 ApJ 346, 794',lab_ref='Lovas et al. 1983 ApJ 267, L131',notes='*Confirmed in 1995 ApJ 438, 259',Acon=2211494,Bcon=253618,Ccon=215102,mub=0.6)
+C2O = Molecule('dicarbon monoxide','C2O',1991,'C2O','TMC-1','Nobeyama','cm',radical=True,neutral=True,C=2,O=1,d_ref='Ohishi et al. 1991 ApJ 380, L39',lab_ref='Yamada et al. 1985 ApJ 290, L65',notes=None,Bcon=11546,mua=1.3)
+MgNC = Molecule('magnesium isocyanide','MgNC',1993,'MgNC','IRC+10216','IRAM','mm',radical=True,neutral=True,C=1,N=1,Mg=1,d_ref='Guélin et al. 1986 A&A 157, L17',lab_ref='Kawaguchi et al. 1993 ApJ 406, L39',notes='*Actually identified in Kawaguchi et al. 1993 ApJ 406, L39 and Guélin et al. 1993 A&A 280, L19',Bcon=5967,mua=5.2)
+NH2 = Molecule('amidogen','NH2',1993,'NH2','Sgr B2 LOS','CSO','sub-mm',radical=True,neutral=True,H=2,N=1,d_ref='van Dishoeck et al. 1993 ApJ 416, L83',lab_ref='Charo et al. 1981 ApJ 244, L111',notes=None,exgal=True,exgal_d_ref='Muller et al. 2014 A&A 566, A112',exgal_sources='PKS 1830-211 LOS',Acon=710302,Bcon=388289,Ccon=245014,mub=1.8)
+NaCN = Molecule('sodium cyanide','NaCN',1994,'NaCN','IRC+10216','NRAO 12-m','mm',neutral=True,C=1,N=1,Na=1,d_ref='Turner et al. 1994 ApJ 426, L97',lab_ref='van Vaals et al. 1984 Chem Phys 86, 147',notes=None,Acon=57922,Bcon=8368,Ccon=7272,mua=8.9)
+N2O = Molecule('nitrous oxide','N2O',1994,'N2O','Sgr B2','NRAO 12-m','mm',neutral=True,O=1,N=2,d_ref='Ziurys et al. 1994 ApJ 436, L181',lab_ref='Lovas 1978 J Phys Chem Ref Data 7, 1445',notes=None,Bcon=12562,mua=0.2)
+MgCN = Molecule('magnesium cyanide','MgCN',1995,'MgCN','IRC+10216','NRAO 12-m, IRAM','mm',radical=True,neutral=True,C=1,N=1,Mg=1,d_ref='Ziurys et al. 1995 ApJ 445, L47',lab_ref='Anderson et al. 1994 ApJ 429, L41',notes=None,Bcon=5095,mua='*')
+H3p = Molecule('','H3+',1996,'H3+','GL2136 LOS, W33 LOS','UKIRT','IR',cation=True,H=3,d_ref='Geballe & Oka 1996 Nature 384, 334',lab_ref='Oka 1980 PRL 45, 531',notes=None,exgal=True,exgal_d_ref='Geballe et al. 2006 ApJ 644, 907',exgal_sources='IRAS 08572+3915',mua=0.0)
+SiCN = Molecule('silicon monocyanide radical','SiCN',2000,'SiCN','IRC+10216','IRAM','mm',radical=True,neutral=True,C=1,N=1,Si=1,d_ref='Guélin et al. 2000 A&A 363, L9',lab_ref='Apponi et al. 2000 ApJ 536, L55',notes=None,Bcon=5543,mua=2.9)
+AlNC = Molecule('aluminum isocyanide','AlNC',2002,'AlNC','IRC+10216','IRAM','mm',neutral=True,C=1,N=1,Al=1,d_ref='Ziurys et al. 2002 ApJ 564, L45',lab_ref='Robinson et al. 1997 Chem Phys Lett 278, 1',notes=None,Bcon=5985,mua=3.1)
+SiNC = Molecule('silicon monoisocyanide','SiNC',2004,'SiNC','IRC+10216','IRAM','mm',radical=True,neutral=True,C=1,N=1,Si=1,d_ref='Guélin et al. 2004 A&A 426, L49',lab_ref='Apponi et al. 2000 ApJ 536, L55',notes=None,Bcon=6397,mua=2.0)
+HCP = Molecule('phosphaethyne','HCP',2007,'HCP','IRC+10216','IRAM','mm',neutral=True,H=1,C=1,P=1,d_ref='Agúndez et al. 2007 ApJ 662, L91',lab_ref='Bizzocchi et al. 2001 JMS 205, 110',notes='*First attempt 1990 ApJ 365, 59. Confirmed 2008 ApJ 684, 618',Bcon=19976,mua=0.4)
+CCP = Molecule('dicarbon phosphide radical','CCP',2008,'CCP','IRC+10216','ARO 12-m','mm',radical=True,neutral=True,C=2,P=1,d_ref='Halfen et al. 2008 ApJ 677, L101',lab_ref='Halfen et al. 2008 ApJ 677, L101',notes=None,Bcon=6373,mua=3.4)
+AlOH = Molecule('aluminum hydroxide','AlOH',2010,'AlOH','VY Ca Maj','ARO 12-m, SMT','mm',neutral=True,H=1,O=1,Al=1,d_ref='Tenenbaum & Ziurys 2010 ApJ 712, L93',lab_ref='Apponi et al. 1993 ApJ 414, L129',notes=None,Bcon=15740,mua=1.0)
+H2Op = Molecule('oxidaniumyl','H2O+',2010,'H2O+','Sgr B2, Sgr B2 LOS, NGC 6334, DR 21','Herschel','sub-mm',cation=True,H=2,O=1,d_ref='Ossenkopf et al. 2010 A&A 518, L111; Gerin et al. 2010 A&A 518, L110',lab_ref='Strahan et al. 1986 JCP 85, 1252; Murtz et al. 1998 JCP 109, 9744 ',notes=None,exgal=True,exgal_d_ref='Weiss et al. 2010 A&A 521, L1',exgal_sources='M82',Acon=870579,Bcon=372365,Ccon=253878,mub=2.4)
+H2Clp = Molecule('chloronium','H2Cl+',2010,'H2Cl+','Sgr B2, Sgr B2 LOS, NGC 6334, NGC 6334 LOS','Herschel','sub-mm',cation=True,H=2,Cl=1,d_ref='Lis et al. 2010 A&A 521, L9',lab_ref='Araki et al. 2001 JMS 210, 132',notes=None,exgal=True,exgal_d_ref='Muller et al. 2014 A&A 566, L6',exgal_sources='PKS 1830-211 LOS',Acon=337352,Bcon=273588,Ccon=148101,mub=1.9)
+KCN = Molecule('potassium cyanide','KCN',2010,'KCN','IRC+10216','ARO 12-m, SMT, IRAM','mm',neutral=True,C=1,N=1,K=1,d_ref='Pulliam et al. 2010 ApJ 727, L181',lab_ref='Torring et al. 1980 JCP 73, 4875',notes=None,Acon=58266,Bcon=4940,Ccon=4536,mub=10.0)
+FeCN = Molecule('iron cyanide','FeCN',2011,'FeCN','IRC+10216','ARO 12-m','mm',neutral=True,C=1,N=1,Fe=1,d_ref='Zack et al. 2011 ApJ 733, L36',lab_ref='Flory & Ziurys 2011 JCP 135, 184303',notes=None,Bcon=4080,mua=4.5)
+HO2 = Molecule('hydroperoxyl radical','HO2',2012,'HO2','rho Oph A','IRAM, APEX','mm',radical=True,neutral=True,H=1,O=2,d_ref='Parise et al. 2012 A&A 541, L11',lab_ref='Beers & Howard 1975 JCP 63, 4212; Saito 1977 JMS 65, 229; Charo & de Lucia 1982 JMS 94, 426',notes=None,Acon=610273,Bcon=33514,Ccon=31672,mua=1.4,mub=1.5)
+TiO2 = Molecule('titanium dioxide','TiO2',2013,'TiO2','VY Ca Maj','SMA, PdBI','mm',neutral=True,O=1,Ti=1,d_ref='Kamiński et al. 2013 A&A 551, A113',lab_ref='Brunken 2008 APJ 676, 1367; Kania et al. 2011 JMS 268, 173',notes=None,Acon=30521,Bcon=8472,Ccon=6614,mua=6.3)
+CCN = Molecule('cyanomethylidyne','CCN',2014,'CCN','IRC+10216','ARO 12-m, SMT','mm',radical=True,neutral=True,C=2,N=1,d_ref='Anderson & Ziurys 2014 ApJ 795, L1',lab_ref='Anderson et al. 2015 JMS 307, 1',notes=None,Bcon=11939,mua=0.4)
+SiCSi = Molecule('disilicon carbide','SiCSi',2015,'SiCSi','IRC+10216','IRAM','mm',neutral=True,C=1,Si=2,d_ref='Cernicharo et al. 2015 ApJ 806, L3',lab_ref='McCarthy 2015 JPC Lett 6, 2107',notes=None,Acon=64074,Bcon=4396,Ccon=4102,mub=0.9)
+S2H = Molecule('hydrogen disulfide','S2H',2017,'S2H','Horsehead PDR','IRAM','mm',neutral=True,H=1,S=2,d_ref='Fuente et al. 2017 ApJ 851, L49',lab_ref='Tanimoto et al. 2000 JMS 199, 73',notes=None,Acon=296979,Bcon=7996,Ccon=7777,mua=1.2,mub=0.9)
+HCS = Molecule('thioformyl','HCS',2018,'HCS','L483','IRAM','mm',radical=True,neutral=True,H=1,C=1,S=1,d_ref='Agúndez et al. 2018 A&A 611, L1',lab_ref='Habara et al. 2002 JCP 116, 9232',notes=None,Acon=954000,Bcon=20359,Ccon=19970,mua=0.4,mub=0.9)
+HSC = Molecule('sulfhydryl carbide','HSC',2018,'HSC','L483','IRAM','mm',radical=True,neutral=True,H=1,C=1,S=1,d_ref='Agúndez et al. 2018 A&A 611, L1',lab_ref='Habara 2000 JCP 112, 10905',notes=None,Acon=295039,Bcon=22036,Ccon=19564,mua=2.5,mub=1.0)
+NCO = Molecule('isocyanate radical','NCO',2018,'NCO','L483','IRAM','mm',radical=True,neutral=True,C=1,O=1,N=1,d_ref='Marcelino et al. 2018 A&A 612, L10',lab_ref='Kawaguchi et al. 1985 Mol Phys 55, 341; Saito and Amano 1970 JMS34, 383',notes=None,Bcon=11677,mua=0.6)
 
 three_atom_list = [H2O,HCOp,HCN,OCS,HNC,H2S,N2Hp,C2H,SO2,HCO,HNO,HCSp,HOCp,SiC2,C2S,C3,CO2,CH2,C2O,MgNC,NH2,NaCN,N2O,MgCN,H3p,SiCN,AlNC,SiNC,HCP,CCP,AlOH,H2Op,H2Clp,KCN,FeCN,HO2,TiO2,CCN,SiCSi,S2H,HCS,HSC,NCO]
 
@@ -261,34 +274,34 @@ three_atom_list = [H2O,HCOp,HCN,OCS,HNC,H2S,N2Hp,C2H,SO2,HCO,HNO,HCSp,HOCp,SiC2,
 #					Four Atom Molecules						#
 #############################################################
 
-NH3 = Molecule('ammonia','NH3',1968,'NH3','Galactic Center','Hat Creek','cm',neutral=True,H=3,N=1,d_ref='Cheung et al. 1968 PRL 25, 1701',lab_ref='Cleeton & Williams 1934 Phys Rev 45, 234',notes=None,ice=True,ice_d_ref='Lacy et al. 1998 ApJ 501, L105',ice_l_ref='d\'Hendecourt & Allamandola 1986 A&A Sup. Ser. 64, 453',ppd=True,ppd_d_ref='Salinas et al. 2016 A&A 591, A122',exgal=True,exgal_d_ref='Martin & Ho 1979 A&A 74, L7',exgal_sources='IC 342, NGC 253')
-H2CO = Molecule('formaldehyde','H2CO',1969,'H2CO','M17 LOS, M3 LOS, W49 LOS, NGC 2024 LOS, DR 21 LOS, W43 LOS, W44 LOS, W51 LOS, Sgr A LOS, Sgr B2 LOS, W33 LOS, NGC 6334 LOS, Cas A LOS','NRAO 140-ft','cm',neutral=True,H=2,C=1,O=1,d_ref='Snyder et al. 1969 PRL 22, 679',lab_ref='Shinegari 1967 J Phys Soc Jpn 23, 404',notes=None,ice=True,ice_d_ref='Keane et al. 2001 A&A 376, 254',ice_l_ref='Schutte et al. 1993 Icarus 104, 118',ppd=True,ppd_d_ref='Dutrey et al. 1997 A&A 317, L55',exgal=True,exgal_d_ref='Gardner & Whiteoak 1974 Nature 247, 526',exgal_sources='NGC 253, NGC 4945')
-HNCO = Molecule('isocyanic acid','HNCO',1972,'HNCO','Sgr B2','NRAO 36-ft','cm, mm',neutral=True,H=1,C=1,O=1,N=1,d_ref='Snyder & Buhl 1972 ApJ 177, 619',lab_ref='Kewley et al. 1963 JMS 10, 418',notes=None,exgal=True,exgal_d_ref='Nguyen-Q-Rieu et al. 1991 A&A 241, L33',exgal_sources='NGC 253, Maffei 2, IC 342')
-H2CS = Molecule('thioformaldehyde','H2CS',1973,'H2CS','Sgr B2 LOS','Parkes 64-m','cm',neutral=True,H=2,C=1,S=1,d_ref='Sinclair et al. 1973 Aust. J. Phys. 26, 85',lab_ref='Johnson & Powell 1970 Science 169, 679',notes=None,exgal=True,exgal_d_ref='Martin et al. 2006 ApJS 164, 450',exgal_sources='NGC 253')
-C2H2 = Molecule('acetylene','C2H2',1976,'C2H2','IRC+10216','Mayall 4-m','IR',neutral=True,H=2,C=2,d_ref='Ridgway et al. 1976 Nature 264, 345',lab_ref='Baldacci et al. 1973 JMS 48, 600',notes=None,ppd=True,ppd_d_ref='Lahuis et al. 2006 ApJ 66, L145',exgal=True,exgal_d_ref='Matsuura et al. 2002 ApJ 580, L133',exgal_sources='LMC')
-C3N = Molecule('cyanoethynyl radical','C3N',1977,'C3N','IRC+10216, TMC-1','NRAO 36-ft, Onsala','cm, mm',radical=True,neutral=True,C=3,N=1,d_ref='Guelin & Thaddeus 1977 ApJ 212, L81',lab_ref='Gottlieb et al. 1983 ApJ 275, 916',notes='*Confirmed in Friberg et al. 1980 ApJ 241, L99')
-HNCS = Molecule('isothiocyanic acid','HNCS',1979,'HNCS','Sgr B2','Bell 7-m, NRAO 36-ft','mm',neutral=True,H=1,C=1,N=1,S=1,d_ref='Frerking et al. 1979 ApJ 234, L143',lab_ref='Kewley et al. 1963 JMS 10, 418',notes=None)
-HOCOp = Molecule('protonated carbon dioxide','HOCO+',1981,'HOCO+','Sgr B2','Bell 7-m','mm',cation=True,H=1,C=1,O=2,d_ref='Thaddeus et al. 1981 ApJ 246, L41',lab_ref='Green et al. 1976 Chem Phys 17, 479; Bogey et al. 1984 A&A 138, L11',notes=None,exgal=True,exgal_d_ref='Aladro et al. 2015 A&A 579, A101; Martin et al. 2006 ApJS 164, 450',exgal_sources='NGC 253')
-C3O = Molecule('tricarbon monoxide','C3O',1985,'C3O','TMC-1','NRAO 12-m, FCRAO 14-m, Nobeyama','cm, mm',radical=True,neutral=True,C=3,O=1,d_ref='Matthews et al. 1984 Nature 310, 125',lab_ref='Brown et al. 1983 JACS 105, 6496',notes='*Confirmed in Brown et al. 1985 ApJ 297, 302 and Kaifu et al. 2004 PASJ 56, 69')
-lC3H = Molecule('propynylidyne radical','l-C3H',1985,'l-C3H','TMC-1, IRC+10216','NRAO 36-ft, Onsala, Bell 7-m, U Mass 14-m','cm, mm',radical=True,neutral=True,H=1,C=3,d_ref='Thaddeus et al. 1985 ApJ 294, L49',lab_ref='Gottlieb et al. 1985 ApJ 294, L55',notes=None,exgal=True,exgal_d_ref='Muller et al. 2011 A&A 535, A103',exgal_sources='PKS 1830-211 LOS')
-HCNHp = Molecule('protonated hydrogen cyanide','HCNH+',1986,'HCNH+','Sgr B2','NRAO 12-m, MWO 4.9-m','mm',cation=True,H=2,C=1,N=1,d_ref='Ziurys & Turner 1986 ApJ 302, L31',lab_ref='Bogey et al. 1985 JCP 83, 3703; Altman et al. 1984 JCP 80, 3911',notes=None)
-H3Op = Molecule('hydronium','H3O+',1986,'H3O+','Orion, Sgr B2','NRAO 12-m, MWO 4.9-m','mm',cation=True,H=3,O=1,d_ref='Wootten et al. 1986 A&A 166, L15; Hollis et al. 1986 Nature 322, 524',lab_ref='Plummer et al. 1985 JCP 83, 1428; Bogey et al. 1985 A&A 148, L11; Liu & Oka 1985 PRL 54, 1787',notes='*Confirmed in Wootten et al. 1991 ApJ 390, L79',exgal=True,exgal_d_ref='van der Tak et al. 2007 A&A 477, L5',exgal_sources='M82, Arp 220')
-C3S = Molecule('tricarbon monosulfide','C3S',1987,'C3S','TMC-1, IRC+10216','Nobeyama, IRAM','cm, mm',radical=True,neutral=True,C=3,S=1,d_ref='Yamamoto et al. 1987 ApJ 317, L119',lab_ref='Yamamoto et al. 1987 ApJ 317, L119',notes=None)
-cC3H = Molecule('cyclopropenylidene radical','c-C3H',1987,'c-C3H','TMC-1','Nobeyama','mm',cyclic=True,radical=True,neutral=True,H=1,C=3,d_ref='Yamamoto et al. 1987 ApJ 322, L55',lab_ref='Yamamoto et al. 1987 ApJ 322, L55',notes=None,exgal='Tentative',exgal_d_ref='Martin et al. 2006 ApJS 164, 450',exgal_sources='NGC 253')
-HC2N = Molecule('cyanocarbene radical','HC2N',1991,'HC2N','IRC+10216','IRAM','mm',radical=True,neutral=True,H=1,C=2,N=1,d_ref='Guélin & Cernicharo 1991 A&A 244, L21',lab_ref='Saito et al. 1984 JCP 80, 1427; Brown et al. 1990 JMS 143, 203',notes=None)
-H2CN = Molecule('methylene amidogen radical','H2CN',1994,'H2CN','TMC-1','NRAO 12-m','cm',radical=True,neutral=True,H=2,C=1,N=1,d_ref='Ohishi et al. 1994 ApJ 427, L51',lab_ref='Yamamoto & Saito 1992 JCP 96, 4157',notes=None)
-SiC3 = Molecule('silicon tricarbide','SiC3',1999,'SiC3','IRC+10216','NRAO 12-m','mm',neutral=True,cyclic=True,C=3,Si=1,d_ref='Apponi et al. 1999 ApJ 516, L103',lab_ref='Apponi et al. 1999 JCP 111, 3911; McCarthy et al. JCP 110, 1064',notes=None)
-CH3 = Molecule('methyl radical','CH3',2000,'CH3','Sgr A LOS','ISO','IR',radical=True,neutral=True,H=3,C=1,d_ref='Feuchtgruber et al. 2000 ApJ 535, L111',lab_ref='Yamada et al. 1981 JCP 75, 5256',notes=None)
-C3Nm = Molecule('cyanoethynyl anion','C3N-',2008,'C3N-','IRC+10216','IRAM','mm',anion=True,C=3,N=1,d_ref='Thaddeus et al. 2008 ApJ 677, 1132',lab_ref='Thaddeus et al. 2008 ApJ 677, 1132',notes=None)
-PH3 = Molecule('phosphine','PH3',2008,'PH3','IRC+10216, CRL 2688','IRAM, Herschel, SMT, CSO','mm, sub-mm',neutral=True,H=3,P=1,d_ref='Agúndez et al. 2008 A&A 485, L33',lab_ref='Cazzoli & Puzzarini 2006 JMS 239, 64; Sousa-Silva et al. 2013 JMS 288, 28; Muller 2013 JQSRT 130, 335',notes='*Confirmed in Agúndez et al. 2014 ApJL 790, L27')
-HCNO = Molecule('fulminic acid','HCNO',2009,'HCNO','B1-b, L1544, L183, L1527','IRAM','mm',neutral=True,H=1,C=1,O=1,N=1,d_ref='Marcelino et al. 2009 ApJ 690, L27',lab_ref='Winnewisser & Winnewisser 1971 Z Naturforsch 26, 128',notes=None)
-HOCN = Molecule('cyanic acid','HOCN',2009,'HOCN','Sgr B2','Bell 7-m, NRAO 36-ft, NRAO 12-m','mm',neutral=True,H=1,C=1,O=1,N=1,d_ref='Brünken et al. 2009 ApJ 697, 880',lab_ref='Brünken et al. 2009 ApJ 697, 880',notes='*Confirmed in Brünken et al. 2010 A&A 516, A109')
-HSCN = Molecule('thiocyanic acid','HSCN',2009,'HSCN','Sgr B2','ARO 12-m','mm',neutral=True,H=1,C=1,N=1,S=1,d_ref='Halfen et al. 2009 ApJ 702, L124',lab_ref='Brunken et al. 2009 ApJ 706, 1588',notes=None)
-HOOH = Molecule('hydrogen peroxide','HOOH',2011,'HOOH','rho Oph A','APEX','mm',neutral=True,H=2,O=2,d_ref='Bergman et al. 2011 A&A 531, L8',lab_ref='Petkie et al. 1995 JMS 171, 145; Helminger et al. 1981 JMS 85, 120',notes=None)
-lC3Hp = Molecule('cyclopropynylidynium cation','l-C3H+',2012,'l-C3H+','Horsehead PDR','IRAM','mm',cation=True,H=1,C=3,d_ref='Pety et al. 2012 A&A 549, A68',lab_ref='Brunken et al. 2014 ApJ 783, L4',notes=None)
-HMgNC = Molecule('hydromagnesium isocyanide','HMgNC',2013,'HMgNC','IRC+10216','IRAM','mm',neutral=True,H=1,C=1,N=1,Mg=1,d_ref='Cabezas et al. 2013 ApJ 75, 133',lab_ref='Cabezas et al. 2013 ApJ 75, 133',notes=None)
-HCCO = Molecule('ketenyl radical','HCCO',2015,'HCCO','Lupus-1A, L483','IRAM','mm',radical=True,neutral=True,H=1,C=2,O=1,d_ref='Agúndez et al. 2015 A&A 577, L5',lab_ref='Endo & Hirota 1987 JCP 86, 4319; Oshima & Endo 1993 JMS 159, 458',notes=None)
-CNCN = Molecule('isocyanogen','CNCN',2018,'CNCN','L483','IRAM','mm',neutral=True,C=2,N=2,d_ref='Agundez et al. 2018 ApJL 861, L22',lab_ref='Gerry et al. 1990 JMS 140, 147; Winnewisser et al. 1992 JMS 153, 635',notes=None)
+NH3 = Molecule('ammonia','NH3',1968,'NH3','Galactic Center','Hat Creek','cm',neutral=True,H=3,N=1,d_ref='Cheung et al. 1968 PRL 25, 1701',lab_ref='Cleeton & Williams 1934 Phys Rev 45, 234',notes=None,ice=True,ice_d_ref='Lacy et al. 1998 ApJ 501, L105',ice_l_ref='d\'Hendecourt & Allamandola 1986 A&A Sup. Ser. 64, 453',ppd=True,ppd_d_ref='Salinas et al. 2016 A&A 591, A122',exgal=True,exgal_d_ref='Martin & Ho 1979 A&A 74, L7',exgal_sources='IC 342, NGC 253',Acon=298193,Bcon=298193,Ccon=286696,muc=1.5)
+H2CO = Molecule('formaldehyde','H2CO',1969,'H2CO','M17 LOS, M3 LOS, W49 LOS, NGC 2024 LOS, DR 21 LOS, W43 LOS, W44 LOS, W51 LOS, Sgr A LOS, Sgr B2 LOS, W33 LOS, NGC 6334 LOS, Cas A LOS','NRAO 140-ft','cm',neutral=True,H=2,C=1,O=1,d_ref='Snyder et al. 1969 PRL 22, 679',lab_ref='Shinegari 1967 J Phys Soc Jpn 23, 404',notes=None,ice=True,ice_d_ref='Keane et al. 2001 A&A 376, 254',ice_l_ref='Schutte et al. 1993 Icarus 104, 118',ppd=True,ppd_d_ref='Dutrey et al. 1997 A&A 317, L55',exgal=True,exgal_d_ref='Gardner & Whiteoak 1974 Nature 247, 526',exgal_sources='NGC 253, NGC 4945',Acon=281971,Bcon=38834,Ccon=34004,mua=2.3)
+HNCO = Molecule('isocyanic acid','HNCO',1972,'HNCO','Sgr B2','NRAO 36-ft','cm, mm',neutral=True,H=1,C=1,O=1,N=1,d_ref='Snyder & Buhl 1972 ApJ 177, 619',lab_ref='Kewley et al. 1963 JMS 10, 418',notes=None,exgal=True,exgal_d_ref='Nguyen-Q-Rieu et al. 1991 A&A 241, L33',exgal_sources='NGC 253, Maffei 2, IC 342',Acon=912711,Bcon=11071,Ccon=10911,mua=1.6,mub=1.4)
+H2CS = Molecule('thioformaldehyde','H2CS',1973,'H2CS','Sgr B2 LOS','Parkes 64-m','cm',neutral=True,H=2,C=1,S=1,d_ref='Sinclair et al. 1973 Aust. J. Phys. 26, 85',lab_ref='Johnson & Powell 1970 Science 169, 679',notes=None,exgal=True,exgal_d_ref='Martin et al. 2006 ApJS 164, 450',exgal_sources='NGC 253',Acon=291292,Bcon=17700,Ccon=16652,mua=1.6)
+C2H2 = Molecule('acetylene','C2H2',1976,'C2H2','IRC+10216','Mayall 4-m','IR',neutral=True,H=2,C=2,d_ref='Ridgway et al. 1976 Nature 264, 345',lab_ref='Baldacci et al. 1973 JMS 48, 600',notes=None,ppd=True,ppd_d_ref='Lahuis et al. 2006 ApJ 66, L145',exgal=True,exgal_d_ref='Matsuura et al. 2002 ApJ 580, L133',exgal_sources='LMC',mua=0.0)
+C3N = Molecule('cyanoethynyl radical','C3N',1977,'C3N','IRC+10216, TMC-1','NRAO 36-ft, Onsala','cm, mm',radical=True,neutral=True,C=3,N=1,d_ref='Guelin & Thaddeus 1977 ApJ 212, L81',lab_ref='Gottlieb et al. 1983 ApJ 275, 916',notes='*Confirmed in Friberg et al. 1980 ApJ 241, L99',Bcon=4968,mua=2.9)
+HNCS = Molecule('isothiocyanic acid','HNCS',1979,'HNCS','Sgr B2','Bell 7-m, NRAO 36-ft','mm',neutral=True,H=1,C=1,N=1,S=1,d_ref='Frerking et al. 1979 ApJ 234, L143',lab_ref='Kewley et al. 1963 JMS 10, 418',notes=None,Acon=1348662,Bcon=5883,Ccon=5847,mua=1.6,mub='*')
+HOCOp = Molecule('protonated carbon dioxide','HOCO+',1981,'HOCO+','Sgr B2','Bell 7-m','mm',cation=True,H=1,C=1,O=2,d_ref='Thaddeus et al. 1981 ApJ 246, L41',lab_ref='Green et al. 1976 Chem Phys 17, 479; Bogey et al. 1984 A&A 138, L11',notes=None,exgal=True,exgal_d_ref='Aladro et al. 2015 A&A 579, A101; Martin et al. 2006 ApJS 164, 450',exgal_sources='NGC 253',Acon=789951,Bcon=10774,Ccon=10609,mua=2.7,mub=1.8)
+C3O = Molecule('tricarbon monoxide','C3O',1985,'C3O','TMC-1','NRAO 12-m, FCRAO 14-m, Nobeyama','cm, mm',radical=True,neutral=True,C=3,O=1,d_ref='Matthews et al. 1984 Nature 310, 125',lab_ref='Brown et al. 1983 JACS 105, 6496',notes='*Confirmed in Brown et al. 1985 ApJ 297, 302 and Kaifu et al. 2004 PASJ 56, 69',Bcon=4811,mua=2.4)
+lC3H = Molecule('propynylidyne radical','l-C3H',1985,'l-C3H','TMC-1, IRC+10216','NRAO 36-ft, Onsala, Bell 7-m, U Mass 14-m','cm, mm',radical=True,neutral=True,H=1,C=3,d_ref='Thaddeus et al. 1985 ApJ 294, L49',lab_ref='Gottlieb et al. 1985 ApJ 294, L55',notes=None,exgal=True,exgal_d_ref='Muller et al. 2011 A&A 535, A103',exgal_sources='PKS 1830-211 LOS',Bcon=11189,mua=3.6,mub=0.5)
+HCNHp = Molecule('protonated hydrogen cyanide','HCNH+',1986,'HCNH+','Sgr B2','NRAO 12-m, MWO 4.9-m','mm',cation=True,H=2,C=1,N=1,d_ref='Ziurys & Turner 1986 ApJ 302, L31',lab_ref='Bogey et al. 1985 JCP 83, 3703; Altman et al. 1984 JCP 80, 3911',notes=None,Bcon=37056,mua=0.3)
+H3Op = Molecule('hydronium','H3O+',1986,'H3O+','Orion, Sgr B2','NRAO 12-m, MWO 4.9-m','mm',cation=True,H=3,O=1,d_ref='Wootten et al. 1986 A&A 166, L15; Hollis et al. 1986 Nature 322, 524',lab_ref='Plummer et al. 1985 JCP 83, 1428; Bogey et al. 1985 A&A 148, L11; Liu & Oka 1985 PRL 54, 1787',notes='*Confirmed in Wootten et al. 1991 ApJ 390, L79',exgal=True,exgal_d_ref='van der Tak et al. 2007 A&A 477, L5',exgal_sources='M82, Arp 220',Acon=334405,Bcon=334405,Ccon=184725,muc=1.4)
+C3S = Molecule('tricarbon monosulfide','C3S',1987,'C3S','TMC-1, IRC+10216','Nobeyama, IRAM','cm, mm',radical=True,neutral=True,C=3,S=1,d_ref='Yamamoto et al. 1987 ApJ 317, L119',lab_ref='Yamamoto et al. 1987 ApJ 317, L119',notes=None,Bcon=2890,mua=3.7)
+cC3H = Molecule('cyclopropenylidene radical','c-C3H',1987,'c-C3H','TMC-1','Nobeyama','mm',cyclic=True,radical=True,neutral=True,H=1,C=3,d_ref='Yamamoto et al. 1987 ApJ 322, L55',lab_ref='Yamamoto et al. 1987 ApJ 322, L55',notes=None,exgal='Tentative',exgal_d_ref='Martin et al. 2006 ApJS 164, 450',exgal_sources='NGC 253',Acon=44517,Bcon=34016,Ccon=19189,mua=2.4)
+HC2N = Molecule('cyanocarbene radical','HC2N',1991,'HC2N','IRC+10216','IRAM','mm',radical=True,neutral=True,H=1,C=2,N=1,d_ref='Guélin & Cernicharo 1991 A&A 244, L21',lab_ref='Saito et al. 1984 JCP 80, 1427; Brown et al. 1990 JMS 143, 203',notes=None,Bcon=10986,mua=3.0)
+H2CN = Molecule('methylene amidogen radical','H2CN',1994,'H2CN','TMC-1','NRAO 12-m','cm',radical=True,neutral=True,H=2,C=1,N=1,d_ref='Ohishi et al. 1994 ApJ 427, L51',lab_ref='Yamamoto & Saito 1992 JCP 96, 4157',notes=None,Acon=284343,Bcon=39158,Ccon=34246,mua=2.5)
+SiC3 = Molecule('silicon tricarbide','SiC3',1999,'SiC3','IRC+10216','NRAO 12-m','mm',neutral=True,cyclic=True,C=3,Si=1,d_ref='Apponi et al. 1999 ApJ 516, L103',lab_ref='Apponi et al. 1999 JCP 111, 3911; McCarthy et al. JCP 110, 1064',notes=None,Acon=37944,Bcon=6283,Ccon=5387,mua=4.0)
+CH3 = Molecule('methyl radical','CH3',2000,'CH3','Sgr A LOS','ISO','IR',radical=True,neutral=True,H=3,C=1,d_ref='Feuchtgruber et al. 2000 ApJ 535, L111',lab_ref='Yamada et al. 1981 JCP 75, 5256',notes=None,mua=0.0)
+C3Nm = Molecule('cyanoethynyl anion','C3N-',2008,'C3N-','IRC+10216','IRAM','mm',anion=True,C=3,N=1,d_ref='Thaddeus et al. 2008 ApJ 677, 1132',lab_ref='Thaddeus et al. 2008 ApJ 677, 1132',notes=None,Bcon=4852,mua=3.1)
+PH3 = Molecule('phosphine','PH3',2008,'PH3','IRC+10216, CRL 2688','IRAM, Herschel, SMT, CSO','mm, sub-mm',neutral=True,H=3,P=1,d_ref='Agúndez et al. 2008 A&A 485, L33',lab_ref='Cazzoli & Puzzarini 2006 JMS 239, 64; Sousa-Silva et al. 2013 JMS 288, 28; Muller 2013 JQSRT 130, 335',notes='*Confirmed in Agúndez et al. 2014 ApJL 790, L27',Acon=133480,Bcon=133480,Ccon=117488)
+HCNO = Molecule('fulminic acid','HCNO',2009,'HCNO','B1-b, L1544, L183, L1527','IRAM','mm',neutral=True,H=1,C=1,O=1,N=1,d_ref='Marcelino et al. 2009 ApJ 690, L27',lab_ref='Winnewisser & Winnewisser 1971 Z Naturforsch 26, 128',notes=None,Bcon=11469,mua=3.1)
+HOCN = Molecule('cyanic acid','HOCN',2009,'HOCN','Sgr B2','Bell 7-m, NRAO 36-ft, NRAO 12-m','mm',neutral=True,H=1,C=1,O=1,N=1,d_ref='Brünken et al. 2009 ApJ 697, 880',lab_ref='Brünken et al. 2009 ApJ 697, 880',notes='*Confirmed in Brünken et al. 2010 A&A 516, A109',Acon=681000,Bcon=10577,Ccon=10398,mua=3.7)
+HSCN = Molecule('thiocyanic acid','HSCN',2009,'HSCN','Sgr B2','ARO 12-m','mm',neutral=True,H=1,C=1,N=1,S=1,d_ref='Halfen et al. 2009 ApJ 702, L124',lab_ref='Brunken et al. 2009 ApJ 706, 1588',notes=None,Acon=289830,Bcon=5795,Ccon=5675,mua=3.3)
+HOOH = Molecule('hydrogen peroxide','HOOH',2011,'HOOH','rho Oph A','APEX','mm',neutral=True,H=2,O=2,d_ref='Bergman et al. 2011 A&A 531, L8',lab_ref='Petkie et al. 1995 JMS 171, 145; Helminger et al. 1981 JMS 85, 120',notes=None,Acon=301878,Bcon=26212,Ccon=25099,muc=1.6)
+lC3Hp = Molecule('cyclopropynylidynium cation','l-C3H+',2012,'l-C3H+','Horsehead PDR','IRAM','mm',cation=True,H=1,C=3,d_ref='Pety et al. 2012 A&A 549, A68',lab_ref='Brunken et al. 2014 ApJ 783, L4',notes=None,Bcon=11245,mua=3.0)
+HMgNC = Molecule('hydromagnesium isocyanide','HMgNC',2013,'HMgNC','IRC+10216','IRAM','mm',neutral=True,H=1,C=1,N=1,Mg=1,d_ref='Cabezas et al. 2013 ApJ 75, 133',lab_ref='Cabezas et al. 2013 ApJ 75, 133',notes=None,Bcon=5481,mua=3.5)
+HCCO = Molecule('ketenyl radical','HCCO',2015,'HCCO','Lupus-1A, L483','IRAM','mm',radical=True,neutral=True,H=1,C=2,O=1,d_ref='Agúndez et al. 2015 A&A 577, L5',lab_ref='Endo & Hirota 1987 JCP 86, 4319; Oshima & Endo 1993 JMS 159, 458',notes=None,Bcon=10831,mua=1.6)
+CNCN = Molecule('isocyanogen','CNCN',2018,'CNCN','L483','IRAM','mm',neutral=True,C=2,N=2,d_ref='Agundez et al. 2018 ApJL 861, L22',lab_ref='Gerry et al. 1990 JMS 140, 147; Winnewisser et al. 1992 JMS 153, 635',notes=None,Bcon=5174,mua=0.7)
 
 four_atom_list = [NH3,H2CO,HNCO,H2CS,C2H2,C3N,HNCS,HOCOp,C3O,lC3H,HCNHp,H3Op,C3S,cC3H,HC2N,H2CN,SiC3,CH3,C3Nm,PH3,HCNO,HOCN,HSCN,HOOH,lC3Hp,HMgNC,HCCO,CNCN]
 
@@ -296,30 +309,30 @@ four_atom_list = [NH3,H2CO,HNCO,H2CS,C2H2,C3N,HNCS,HOCOp,C3O,lC3H,HCNHp,H3Op,C3S
 #					Five Atom Molecules						#
 #############################################################
 
-HC3N = Molecule('cyanoacetylene','HC3N',1971,'HC3N','Sgr B2','NRAO 140-ft','cm',neutral=True,H=1,C=3,N=1,d_ref='Turner 1971 ApJ 163, L35',lab_ref='Tyler & Sheridan 1963 Trans Faraday Soc 59, 2661',notes='*Confirmed in Dickinson 1972 AL 12, 235',ppd=True,ppd_d_ref='Chapillon et al. 2012 ApJ 756, 58',exgal=True,exgal_d_ref='Mauersberger et al. 1990 A&A 236, 63; Henkel et al. 1988 A&A 201, L23',exgal_sources='NGC 253')
-HCOOH = Molecule('formic acid','HCOOH',1971,'HCOOH','Sgr B2','NRAO 140-ft','cm',neutral=True,H=2,C=1,O=2,d_ref='Zukerman et al. 1971 ApJ 163, L41',lab_ref='Zukerman et al. 1971 ApJ 163, L41; Bellet et al. 1971 J Mol Struct 9, 49; Bellet et al. 1971 J Mol Struct 9, 65',notes='*Confirmed in Winnewisser & Churchwell 1975 ApJ 200, L33',ice=True,ice_d_ref='Schutte et al. 1999 A&A 343, 966',ice_l_ref='Schutte et al. 1999 A&A 343, 966',ppd=True,ppd_d_ref='Favre et al. 2018 ApJL 862, L2')
-CH2NH = Molecule('methanimine','CH2NH',1973,'CH2NH','Sgr B2','Parkes 64-m','cm',neutral=True,H=3,C=1,N=1,d_ref='Godfrey et al. 1973 ApL 13, 119',lab_ref='Godfrey et al. 1973 ApL 13, 119; Johnson & Lovas 1972 CPL 15, 65',notes=None,exgal=True,exgal_d_ref='Muller et al. 2011 A&A 535, A103',exgal_sources='PKS 1830-211 LOS')
-NH2CN = Molecule('cyanamide','NH2CN',1975,'NH2CN','Sgr B2','NRAO 36-ft','mm',neutral=True,H=2,C=1,N=2,d_ref='Turner et al. 1975 ApJ 201, L149',lab_ref='Tyler et al. 1972 JMS 43, 248; Miller et al. 1962 JMS 8, 153; Lide 1962 JMS 8, 142; Johnson & Suenram 1976 ApJ 208, 245',notes=None,exgal=True,exgal_d_ref='Martin et al. 2006 ApJS 164, 450',exgal_sources='NGC 253')
-H2CCO = Molecule('ketene','H2CCO',1977,'H2CCO','Sgr B2','NRAO 36-ft','mm',neutral=True,H=2,C=2,O=1,d_ref='Turner 1977 ApJ 213, L75',lab_ref='Johnson & Strandberg 1952 JCP 20, 687; Johns et al. 1972 JMS 42, 523',notes=None,exgal=True,exgal_d_ref='Muller et al. 2011 A&A 535, A103',exgal_sources='PKS 1830-211 LOS')
-C4H = Molecule('butadiynyl radical','C4H',1978,'C4H','IRC+10216','NRAO 36-ft','mm',radical=True,neutral=True,H=1,C=4,d_ref='Guélin et al. 1978 ApJ 224, L27',lab_ref='Gottlieb et al. 1983 ApJ 275, 916',notes=None,exgal=True,exgal_d_ref='Muller et al. 2011 A&A 535, A103',exgal_sources='PKS 1830-211 LOS')
-SiH4 = Molecule('silane','SiH4',1984,'SiH4','IRC+10216','IRTF','IR',neutral=True,H=4,Si=1,d_ref='Goldhaber and Betz 1977 ApJ 279, L55',lab_ref='Goldhaber and Betz 1977 ApJ 279, L55',notes=None)
-cC3H2 = Molecule('cyclopropenylidene','c-C3H2',1985,'c-C3H2','Sgr B2, Orion, TMC-1','Bell 7-m','cm, mm',neutral=True,cyclic=True,H=2,C=3,d_ref='Thaddeus et al. 1985 ApJ 299, L63',lab_ref='Thaddeus et al. 1985 ApJ 299, L63',notes='*See also Vrtilek et al. 1987 ApJ 314, 716',ppd=True,ppd_d_ref='Qi et al. 2013 ApJL 765, L14',exgal=True,exgal_d_ref='Seaquist & Bell 1986 ApJ 303, L67',exgal_sources='NGC 5128')
-CH2CN = Molecule('cyanomethyl radical','CH2CN',1988,'CH2CN','TMC-1, Sgr B2','FCRAO 14-m, NRAO 140-ft, Onsala, Nobeyama','cm',radical=True,neutral=True,H=2,C=2,N=1,d_ref='Irvine et al. 1988 ApJ 334, L107',lab_ref='Saito et al. 1988 ApJ 334, L113',notes=None,exgal=True,exgal_d_ref='Muller et al. 2011 A&A 535, A103',exgal_sources='PKS 1830-211 LOS')
-C5 = Molecule('pentacarbon','C5',1989,'C5','IRC+10216','KPNO 4-m','IR',neutral=True,C=5,d_ref='Bernath et al. 1989 Science 244, 562',lab_ref='Vala et al. 1989 JCP 90, 595',notes=None)
-SiC4 = Molecule('silicon tetracarbide','SiC4',1989,'SiC4','IRC+10216','Nobeyama','cm, mm',neutral=True,C=4,Si=1,d_ref='Ohishi et al. 1989 ApJ 345, L83',lab_ref='Ohishi et al. 1989 ApJ 345, L83',notes=None)
-H2CCC = Molecule('propadienylidene','H2CCC',1991,'H2CCC','TMC-1','IRAM, Effelsberg 100-m','cm, mm',neutral=True,H=2,C=3,d_ref='Cernicharo et al. 1991 ApJ 368, L39',lab_ref='Vrtilek et al. 1990 ApJ 364, L53',notes=None,exgal=True,exgal_d_ref='Muller et al. 2011 A&A 535, A103',exgal_sources='PKS 1830-211 LOS')
-CH4 = Molecule('methane','CH4',1991,'CH4','NGC 7538 LOS','IRTF','IR',neutral=True,H=4,C=1,d_ref='Lacy et al. 1991 ApJ 376, 556',lab_ref='Champion et al. 1989 JMS 133, 256; d\'Hendecourt & Allamandola 1986 A&A Supp Ser. 64, 453 ',notes=None,ice=True,ice_d_ref='Lacy et al. 1991 ApJ 376, 556',ice_l_ref='d\'Hendecourt & Allamandola 1986 A&A Sup. Ser. 64, 453',ppd=True,ppd_d_ref='Gibb et al. 2013 ApJL 776, L28',exo=True,exo_d_ref='Swain et al. 2008 Nature 452, 329; Barman et al. 2011 ApJ 733, 65; Stevenson et al. 2014 ApJ 791, 36; Barman et al. 2015 ApJ 804, 61')
-HCCNC = Molecule('isocyanoacetylene','HCCNC',1992,'HCCNC','TMC-1','Nobeyama','cm, mm',neutral=True,H=1,C=3,N=1,d_ref='Kawaguchi et al. 1992 ApJ 386, L51',lab_ref='Kruger et al. 2010 Ang. Chem. 23, 1644',notes=None)
-HNCCC = Molecule('','HNCCC',1992,'HNCCC','TMC-1','Nobeyama','cm',neutral=True,H=1,C=3,N=1,d_ref='Kawaguchi et al. 1992 ApJ 396, L49',lab_ref='Kawaguchi et al. 1992 ApJ 396, L49',notes=None)
-H2COHp = Molecule('protonated formaldehyde','H2COH+',1996,'H2COH+','Sgr B2, Orion, W51','Nobeyama, NRAO 12-m','cm, mm',cation=True,H=3,C=1,O=1,d_ref='Ohishi et al. 1996 ApJ 471, L61',lab_ref='Chomiak et al. 1994 Can J Phys 72, 1078',notes=None)
-C4Hm = Molecule('butadiynyl anion','C4H-',2007,'C4H-','IRC+10216','IRAM','mm',anion=True,H=1,C=4,d_ref='Cernicharo et al. 2007 A&A 467, L37',lab_ref='Gupta et al. 2007 ApJ 655, L57',notes=None)
-CNCHO = Molecule('cyanoformaldehyde','CNCHO',2007,'CNCHO','Sgr B2','GBT','cm',neutral=True,H=1,C=2,O=1,N=1,d_ref='Remijan et al. 2008 ApJ 675, L85',lab_ref='Bogey et al. 1988 CPL 146, 227; Bogey et al. 1995 JMS 172, 344',notes=None)
-HNCNH = Molecule('carbodiimide','HNCNH',2012,'HNCNH','Sgr B2','GBT','cm',neutral=True,H=2,C=1,N=2,d_ref='McGuire et al. 2012 ApJ 758, L33',lab_ref='Birk et al. 1989 JMS 135, 402; Wagener et al. 1995 JMS 170, 323; Jabs et al. 1997 Chem Phys 225, 77',notes=None)
-CH3O = Molecule('methoxy radical','CH3O',2012,'CH3O','B1-b','IRAM','mm',radical=True,neutral=True,H=3,C=1,O=1,d_ref='Cernicharo et al. 2012 ApJ 759, L43',lab_ref='Momose et al. 1988 JCP 88, 5338; Endo et al. 1984 JCP 81, 122',notes=None)
-NH3Dp = Molecule('ammonium ion','NH3D+',2013,'NH3D+','Orion, B1-b','IRAM','mm',cation=True,H=4,N=1,d_ref='Gupta et al. 2013 ApJ 778, L1',lab_ref='Gupta et al. 2013 ApJ 778, L1',notes='*Confirmed in Marcelino et al. 2018 A&A 612, L10')
-H2NCOp = Molecule('protonated isocyanic acid','H2NCO+',2013,'H2NCO+','Sgr B2, L483','GBT','cm',cation=True,H=2,C=1,O=1,N=1,d_ref='Cernicharo et al. 2013 ApJ 771, L10',lab_ref='Cernicharo et al. 2013 ApJ 771, L10',notes='*See also Doménech et al. 2013 ApJ 77, L11')
-NCCNHp = Molecule('protonated cyanogen','NCCNH+',2015,'NCCNH+','TMC-1, L483','Yebes 40-m, IRAM','cm, mm',cation=True,H=1,C=2,N=2,d_ref='Agúndez et al. 2015 A&A 579, L10',lab_ref='Amano & Scappini 1991 JCP 95, 2280; Gottlieb et al. 200 JCP 113, 1910',notes=None)
-CH3Cl = Molecule('chloromethane','CH3Cl',2017,'CH3Cl','IRAS 16293','ALMA','mm',neutral=True,H=3,C=1,Cl=1,d_ref='Fayolle et al. 2017 Nature Astron. 1, 702',lab_ref='Wlodarczak et al. 1986 JMS 116, 251',notes=None)
+HC3N = Molecule('cyanoacetylene','HC3N',1971,'HC3N','Sgr B2','NRAO 140-ft','cm',neutral=True,H=1,C=3,N=1,d_ref='Turner 1971 ApJ 163, L35',lab_ref='Tyler & Sheridan 1963 Trans Faraday Soc 59, 2661',notes='*Confirmed in Dickinson 1972 AL 12, 235',ppd=True,ppd_d_ref='Chapillon et al. 2012 ApJ 756, 58',exgal=True,exgal_d_ref='Mauersberger et al. 1990 A&A 236, 63; Henkel et al. 1988 A&A 201, L23',exgal_sources='NGC 253',Bcon=4549,mua=3.7)
+HCOOH = Molecule('formic acid','HCOOH',1971,'HCOOH','Sgr B2','NRAO 140-ft','cm',neutral=True,H=2,C=1,O=2,d_ref='Zukerman et al. 1971 ApJ 163, L41',lab_ref='Zukerman et al. 1971 ApJ 163, L41; Bellet et al. 1971 J Mol Struct 9, 49; Bellet et al. 1971 J Mol Struct 9, 65',notes='*Confirmed in Winnewisser & Churchwell 1975 ApJ 200, L33',ice=True,ice_d_ref='Schutte et al. 1999 A&A 343, 966',ice_l_ref='Schutte et al. 1999 A&A 343, 966',ppd=True,ppd_d_ref='Favre et al. 2018 ApJL 862, L2',Acon=77512,Bcon=12055,Ccon=10416,mua=1.4,mub=0.2)
+CH2NH = Molecule('methanimine','CH2NH',1973,'CH2NH','Sgr B2','Parkes 64-m','cm',neutral=True,H=3,C=1,N=1,d_ref='Godfrey et al. 1973 ApL 13, 119',lab_ref='Godfrey et al. 1973 ApL 13, 119; Johnson & Lovas 1972 CPL 15, 65',notes=None,exgal=True,exgal_d_ref='Muller et al. 2011 A&A 535, A103',exgal_sources='PKS 1830-211 LOS',Acon=196211,Bcon=34532,Ccon=29352,mua=1.3,mub=1.5)
+NH2CN = Molecule('cyanamide','NH2CN',1975,'NH2CN','Sgr B2','NRAO 36-ft','mm',neutral=True,H=2,C=1,N=2,d_ref='Turner et al. 1975 ApJ 201, L149',lab_ref='Tyler et al. 1972 JMS 43, 248; Miller et al. 1962 JMS 8, 153; Lide 1962 JMS 8, 142; Johnson & Suenram 1976 ApJ 208, 245',notes=None,exgal=True,exgal_d_ref='Martin et al. 2006 ApJS 164, 450',exgal_sources='NGC 253',Acon=312142,Bcon=10130,Ccon=9866,mua=4.3,muc=1.0)
+H2CCO = Molecule('ketene','H2CCO',1977,'H2CCO','Sgr B2','NRAO 36-ft','mm',neutral=True,H=2,C=2,O=1,d_ref='Turner 1977 ApJ 213, L75',lab_ref='Johnson & Strandberg 1952 JCP 20, 687; Johns et al. 1972 JMS 42, 523',notes=None,exgal=True,exgal_d_ref='Muller et al. 2011 A&A 535, A103',exgal_sources='PKS 1830-211 LOS',Acon=282473,Bcon=10294,Ccon=9916,mua=1.4)
+C4H = Molecule('butadiynyl radical','C4H',1978,'C4H','IRC+10216','NRAO 36-ft','mm',radical=True,neutral=True,H=1,C=4,d_ref='Guélin et al. 1978 ApJ 224, L27',lab_ref='Gottlieb et al. 1983 ApJ 275, 916',notes=None,exgal=True,exgal_d_ref='Muller et al. 2011 A&A 535, A103',exgal_sources='PKS 1830-211 LOS',Bcon=4759,mua=0.9)
+SiH4 = Molecule('silane','SiH4',1984,'SiH4','IRC+10216','IRTF','IR',neutral=True,H=4,Si=1,d_ref='Goldhaber and Betz 1977 ApJ 279, L55',lab_ref='Goldhaber and Betz 1977 ApJ 279, L55',notes=None,mua=0.0)
+cC3H2 = Molecule('cyclopropenylidene','c-C3H2',1985,'c-C3H2','Sgr B2, Orion, TMC-1','Bell 7-m','cm, mm',neutral=True,cyclic=True,H=2,C=3,d_ref='Thaddeus et al. 1985 ApJ 299, L63',lab_ref='Thaddeus et al. 1985 ApJ 299, L63',notes='*See also Vrtilek et al. 1987 ApJ 314, 716',ppd=True,ppd_d_ref='Qi et al. 2013 ApJL 765, L14',exgal=True,exgal_d_ref='Seaquist & Bell 1986 ApJ 303, L67',exgal_sources='NGC 5128',Acon=35093,Bcon=32213,Ccon=16749,mub=3.4)
+CH2CN = Molecule('cyanomethyl radical','CH2CN',1988,'CH2CN','TMC-1, Sgr B2','FCRAO 14-m, NRAO 140-ft, Onsala, Nobeyama','cm',radical=True,neutral=True,H=2,C=2,N=1,d_ref='Irvine et al. 1988 ApJ 334, L107',lab_ref='Saito et al. 1988 ApJ 334, L113',notes=None,exgal=True,exgal_d_ref='Muller et al. 2011 A&A 535, A103',exgal_sources='PKS 1830-211 LOS',Acon=285130,Bcon=10246,Ccon=9877,mua=1.6)
+C5 = Molecule('pentacarbon','C5',1989,'C5','IRC+10216','KPNO 4-m','IR',neutral=True,C=5,d_ref='Bernath et al. 1989 Science 244, 562',lab_ref='Vala et al. 1989 JCP 90, 595',notes=None,mua=0.0)
+SiC4 = Molecule('silicon tetracarbide','SiC4',1989,'SiC4','IRC+10216','Nobeyama','cm, mm',neutral=True,C=4,Si=1,d_ref='Ohishi et al. 1989 ApJ 345, L83',lab_ref='Ohishi et al. 1989 ApJ 345, L83',notes=None,Bcon=1534,mua=6.4)
+H2CCC = Molecule('propadienylidene','H2CCC',1991,'H2CCC','TMC-1','IRAM, Effelsberg 100-m','cm, mm',neutral=True,H=2,C=3,d_ref='Cernicharo et al. 1991 ApJ 368, L39',lab_ref='Vrtilek et al. 1990 ApJ 364, L53',notes=None,exgal=True,exgal_d_ref='Muller et al. 2011 A&A 535, A103',exgal_sources='PKS 1830-211 LOS',Acon=288775,Bcon=10589,Ccon=10204,mua=4.1)
+CH4 = Molecule('methane','CH4',1991,'CH4','NGC 7538 LOS','IRTF','IR',neutral=True,H=4,C=1,d_ref='Lacy et al. 1991 ApJ 376, 556',lab_ref='Champion et al. 1989 JMS 133, 256; d\'Hendecourt & Allamandola 1986 A&A Supp Ser. 64, 453 ',notes=None,ice=True,ice_d_ref='Lacy et al. 1991 ApJ 376, 556',ice_l_ref='d\'Hendecourt & Allamandola 1986 A&A Sup. Ser. 64, 453',ppd=True,ppd_d_ref='Gibb et al. 2013 ApJL 776, L28',exo=True,exo_d_ref='Swain et al. 2008 Nature 452, 329; Barman et al. 2011 ApJ 733, 65; Stevenson et al. 2014 ApJ 791, 36; Barman et al. 2015 ApJ 804, 61',mua=0.0)
+HCCNC = Molecule('isocyanoacetylene','HCCNC',1992,'HCCNC','TMC-1','Nobeyama','cm, mm',neutral=True,H=1,C=3,N=1,d_ref='Kawaguchi et al. 1992 ApJ 386, L51',lab_ref='Kruger et al. 2010 Ang. Chem. 23, 1644',notes=None,Bcon=4968,mua=2.9)
+HNCCC = Molecule('','HNCCC',1992,'HNCCC','TMC-1','Nobeyama','cm',neutral=True,H=1,C=3,N=1,d_ref='Kawaguchi et al. 1992 ApJ 396, L49',lab_ref='Kawaguchi et al. 1992 ApJ 396, L49',notes=None,Bcon=4668,mua=5.7)
+H2COHp = Molecule('protonated formaldehyde','H2COH+',1996,'H2COH+','Sgr B2, Orion, W51','Nobeyama, NRAO 12-m','cm, mm',cation=True,H=3,C=1,O=1,d_ref='Ohishi et al. 1996 ApJ 471, L61',lab_ref='Chomiak et al. 1994 Can J Phys 72, 1078',notes=None,Acon=197582,Bcon=34351,Ccon=29173,mua=1.4,mub=1.8)
+C4Hm = Molecule('butadiynyl anion','C4H-',2007,'C4H-','IRC+10216','IRAM','mm',anion=True,H=1,C=4,d_ref='Cernicharo et al. 2007 A&A 467, L37',lab_ref='Gupta et al. 2007 ApJ 655, L57',notes=None,Bcon=4655,mua=6.2)
+CNCHO = Molecule('cyanoformaldehyde','CNCHO',2007,'CNCHO','Sgr B2','GBT','cm',neutral=True,H=1,C=2,O=1,N=1,d_ref='Remijan et al. 2008 ApJ 675, L85',lab_ref='Bogey et al. 1988 CPL 146, 227; Bogey et al. 1995 JMS 172, 344',notes=None,Acon=67470,Bcon=5010,Ccon=4657,mua=0.8,mub=1.9)
+HNCNH = Molecule('carbodiimide','HNCNH',2012,'HNCNH','Sgr B2','GBT','cm',neutral=True,H=2,C=1,N=2,d_ref='McGuire et al. 2012 ApJ 758, L33',lab_ref='Birk et al. 1989 JMS 135, 402; Wagener et al. 1995 JMS 170, 323; Jabs et al. 1997 Chem Phys 225, 77',notes=None,Acon=379244,Bcon=10367,Ccon=10366,mub=1.9)
+CH3O = Molecule('methoxy radical','CH3O',2012,'CH3O','B1-b','IRAM','mm',radical=True,neutral=True,H=3,C=1,O=1,d_ref='Cernicharo et al. 2012 ApJ 759, L43',lab_ref='Momose et al. 1988 JCP 88, 5338; Endo et al. 1984 JCP 81, 122',notes=None,Acon=513887,Bcon=27930,Ccon=27930,mua=2.1)
+NH3Dp = Molecule('ammonium ion','NH3D+',2013,'NH3D+','Orion, B1-b','IRAM','mm',cation=True,H=4,N=1,d_ref='Gupta et al. 2013 ApJ 778, L1',lab_ref='Gupta et al. 2013 ApJ 778, L1',notes='*Confirmed in Marcelino et al. 2018 A&A 612, L10',Acon=175439,Bcon=131412,Ccon=131412,mua=0.3)
+H2NCOp = Molecule('protonated isocyanic acid','H2NCO+',2013,'H2NCO+','Sgr B2, L483','GBT','cm',cation=True,H=2,C=1,O=1,N=1,d_ref='Cernicharo et al. 2013 ApJ 771, L10',lab_ref='Cernicharo et al. 2013 ApJ 771, L10',notes='*See also Doménech et al. 2013 ApJ 77, L11',Acon=319800,Bcon=10279,Ccon=9949,mua=4.1)
+NCCNHp = Molecule('protonated cyanogen','NCCNH+',2015,'NCCNH+','TMC-1, L483','Yebes 40-m, IRAM','cm, mm',cation=True,H=1,C=2,N=2,d_ref='Agúndez et al. 2015 A&A 579, L10',lab_ref='Amano & Scappini 1991 JCP 95, 2280; Gottlieb et al. 200 JCP 113, 1910',notes=None,Bcon=4438,mua=6.5)
+CH3Cl = Molecule('chloromethane','CH3Cl',2017,'CH3Cl','IRAS 16293','ALMA','mm',neutral=True,H=3,C=1,Cl=1,d_ref='Fayolle et al. 2017 Nature Astron. 1, 702',lab_ref='Wlodarczak et al. 1986 JMS 116, 251',notes=None,Acon=156051,Bcon=13293,Ccon=13293,mua=1.9)
 
 five_atom_list = [HC3N,HCOOH,CH2NH,NH2CN,H2CCO,C4H,SiH4,cC3H2,CH2CN,C5,SiC4,H2CCC,CH4,HCCNC,HNCCC,H2COHp,C4Hm,CNCHO,HNCNH,CH3O,NH3Dp,H2NCOp,NCCNHp,CH3Cl]
 
@@ -329,25 +342,25 @@ five_atom_list = [HC3N,HCOOH,CH2NH,NH2CN,H2CCO,C4H,SiH4,cC3H2,CH2CN,C5,SiC4,H2CC
 #############################################################
 
 
-CH3OH = Molecule('methanol','CH3OH',1970,'CH3OH','Sgr A, Sgr B2','NRAO 140-ft','cm',neutral=True,H=4,C=1,O=1,d_ref='Ball et al. 1970 ApJ 162, L203',lab_ref='Ball et al. 1970 ApJ 162, L203',notes=None,ice=True,ice_d_ref='Grim et al. 1991 A&A 243, 473',ice_l_ref='d\'Hendecourt & Allamandola 1986 A&A Sup. Ser. 64, 453',ppd=True,ppd_d_ref='Walsh et al. 2016 ApJL 823, L10',exgal=True,exgal_d_ref='Henkel et al. 1987 A&A 188, L1',exgal_sources='NGC 253, IC 342')
-CH3CN = Molecule('methyl cyanide','CH3CN',1971,'CH3CN','Sgr A, Sgr B2','NRAO 36-ft','mm',neutral=True,H=3,C=2,N=1,d_ref='Solomon et al. 1971 ApJ 168, L107',lab_ref='Cord et al. 1968 Microwave Spectral Tables V5; Kessler et al. Phys Rev 79, 54',notes=None,ppd=True,ppd_d_ref='Oberg et al. 2015 Nature 520, 198',exgal=True,exgal_d_ref='Mauersberger et al. 1991 A&A 247, 307',exgal_sources='NGC 253')
-NH2CHO = Molecule('formamide','NH2CHO',1971,'NH2CHO','Sgr B2','NRAO 140-ft','cm',neutral=True,H=3,C=1,O=1,N=1,d_ref='Rubin et al. 1971 ApJ 169, L39',lab_ref='Rubin et al. 1971 ApJ 169, L39',notes=None,exgal=True,exgal_d_ref='Muller et al. 2013 A&A 551, A109',exgal_sources='PKS 1830-211 LOS')
-CH3SH = Molecule('methyl mercaptan','CH3SH',1979,'CH3SH','Sgr B2','Bell 7-m','mm',neutral=True,H=4,C=1,S=1,d_ref='Linke et al. 1979 ApJ 234, L139',lab_ref='Kilb 1955 JCP 23, 1736',notes=None)
-C2H4 = Molecule('ethylene','C2H4',1981,'C2H4','IRC+10216','McMath Solar Telescope','IR',neutral=True,H=4,C=2,d_ref='Betz 1981 ApJ 244, L103',lab_ref='Lambeau et al. 1980 JMS 81, 227',notes=None)
-C5H = Molecule('pentynylidyne radical','C5H',1986,'C5H','IRC+10216','IRAM','cm',radical=True,neutral=True,H=1,C=5,d_ref='Cernicharo et al. 1986 A&A 164, L1',lab_ref='Gottlieb et al. 1986 A&A 164, L5',notes='*See also Cernicharo et al. 1986 A&A 167, L5 and Cernicharo et al. 1987 A&A 172, L5')
-CH3NC = Molecule('methyl isocyanide','CH3NC',1988,'CH3NC','Sgr B2','IRAM','mm',neutral=True,H=3,C=2,N=1,d_ref='Cernicharo et al. 1988 A&A 189, L1',lab_ref='Kukolich 1972 JCP 57, 869; Ring et al. 1947 Phys Rev 72, 1262',notes='*Confirmed in Remijan et al. 2005 ApJ 632, 333 and Gratier et al. 2013 557, A101')
-HC2CHO = Molecule('propynal','HC2CHO',1988,'HC2CHO','TMC-1','NRAO 140-ft, Nobeyama','cm',neutral=True,H=2,C=3,O=1,d_ref='Irvine et al. 1988 ApJ 335, L89',lab_ref='Winnewisser 1973 JMS 46, 16',notes=None)
-H2C4 = Molecule('butatrienylidene','H2C4',1991,'H2C4','IRC+10216','IRAM','mm',neutral=True,H=2,C=4,d_ref='Cernicharo et al. 1991 ApJ 368, L43',lab_ref='Killian et al. 1990 ApJ 365, L89',notes=None)
-C5S = Molecule('pentacarbon monosulfide radical','C5S',1993,'C5S','IRC+10216','NRAO 140-ft','cm',radical=True,neutral=True,C=5,S=1,d_ref='Bell et al. 1993 ApJ 417, L37',lab_ref='Kasai et al. 1993 ApJ 410, L45; Gordon et al. 2001 ApJS 134, 311',notes='*Confirmed in Agúndez et al. 2014 A&A 570, A45')
-HC3NHp = Molecule('protonated cyanoacetylene','HC3NH+',1994,'HC3NH+','TMC-1','Nobeyama','cm',cation=True,H=2,C=3,N=1,d_ref='Kawaguchi et al. 1994 ApJ 420, L95',lab_ref='Lee & Amano 1987 ApJ 323',notes=None)
-C5N = Molecule('cyanobutadiynyl radical','C5N',1998,'C5N','TMC-1','Effelsberg 100-m, IRAM','cm',radical=True,neutral=True,C=5,N=1,d_ref='Guélin et al. 1998 A&A 355, L1',lab_ref='Kasai et al. 1997 ApJ 477, L65',notes=None)
-HC4H = Molecule('diacetylene','HC4H',2001,'HC4H','CRL 618','ISO','IR',neutral=True,H=2,C=4,d_ref='Cernicharo et al. 2001 ApJ 546, L123',lab_ref='Arie & Johns 1992 JMS 155, 195',notes='*Confirmed in 2018 ApJ 852, 80',exgal=True,exgal_d_ref='Bernard-Salas et al. 2006 ApJ 652, L29',exgal_sources='SMP LMC 11')
-HC4N = Molecule('','HC4N',2004,'HC4N','IRC+10216','IRAM','mm',radical=True,neutral=True,H=1,C=4,N=1,d_ref='Cernicharo et al. 2004 ApJ 615, L145',lab_ref='Tang et al. 1999 CPL 315, 69',notes=None)
-cH2C3O = Molecule('cyclopropenone','c-H2C3O',2006,'c-H2C3O','Sgr B2','GBT','cm',neutral=True,cyclic=True,H=2,C=3,O=1,d_ref='Hollis et al. 2006 ApJ 642, 933',lab_ref='Benson et al. 1973 JACS 95, 2772; Guillemin et al. 1990 JMS 140, 190',notes=None)
-CH2CNH = Molecule('ketenimine','CH2CNH',2006,'CH2CNH','Sgr B2','GBT','cm',neutral=True,H=3,C=2,N=1,d_ref='Lovas et al. 2006 ApJ 645, L137',lab_ref='Rodler et al. 1984 CPL 110, 447; Rodler et al. 1986 JMS 118, 267',notes=None)
-C5Nm = Molecule('cyanobutadiynyl anion','C5N-',2008,'C5N-','IRC+10216','IRAM','mm',anion=True,C=5,N=1,d_ref='Cernicharo et al. 2008 ApJ 688, L83',lab_ref='Botschwina & Oswald 2008 JCP 129, 044305',notes=None)
-HNCHCN = Molecule('E-cyanomethanimine','HNCHCN',2013,'HNCHCN','Sgr B2','GBT','cm',neutral=True,H=2,C=2,N=2,d_ref='Zaleski et al. 2013 ApJ 765, L9',lab_ref='Zaleski et al. 2013 ApJ 765, L9',notes=None)
-SiH3CN = Molecule('silyl cyanide','SiH3CN',2014,'SiH3CN','IRC+10216','IRAM','mm',neutral=True,H=3,C=1,N=1,Si=1,d_ref='Agúndez et al. 2014 A&A 570, A45',lab_ref='Priem et al. 1998 JMS 191, 183',notes='*Confirmed in Cernicharo et al. 2017 A&A 606, L5')
+CH3OH = Molecule('methanol','CH3OH',1970,'CH3OH','Sgr A, Sgr B2','NRAO 140-ft','cm',neutral=True,H=4,C=1,O=1,d_ref='Ball et al. 1970 ApJ 162, L203',lab_ref='Ball et al. 1970 ApJ 162, L203',notes=None,ice=True,ice_d_ref='Grim et al. 1991 A&A 243, 473',ice_l_ref='d\'Hendecourt & Allamandola 1986 A&A Sup. Ser. 64, 453',ppd=True,ppd_d_ref='Walsh et al. 2016 ApJL 823, L10',exgal=True,exgal_d_ref='Henkel et al. 1987 A&A 188, L1',exgal_sources='NGC 253, IC 342',Acon=127523,Bcon=24690,Ccon=23760,mua=0.9,mub=1.4)
+CH3CN = Molecule('methyl cyanide','CH3CN',1971,'CH3CN','Sgr A, Sgr B2','NRAO 36-ft','mm',neutral=True,H=3,C=2,N=1,d_ref='Solomon et al. 1971 ApJ 168, L107',lab_ref='Cord et al. 1968 Microwave Spectral Tables V5; Kessler et al. Phys Rev 79, 54',notes=None,ppd=True,ppd_d_ref='Oberg et al. 2015 Nature 520, 198',exgal=True,exgal_d_ref='Mauersberger et al. 1991 A&A 247, 307',exgal_sources='NGC 253',Acon=158099,Bcon=9199,Ccon=9199,mua=3.9)
+NH2CHO = Molecule('formamide','NH2CHO',1971,'NH2CHO','Sgr B2','NRAO 140-ft','cm',neutral=True,H=3,C=1,O=1,N=1,d_ref='Rubin et al. 1971 ApJ 169, L39',lab_ref='Rubin et al. 1971 ApJ 169, L39',notes=None,exgal=True,exgal_d_ref='Muller et al. 2013 A&A 551, A109',exgal_sources='PKS 1830-211 LOS',Acon=72717,Bcon=11373,Ccon=9834,mua=3.6,mub=0.9)
+CH3SH = Molecule('methyl mercaptan','CH3SH',1979,'CH3SH','Sgr B2','Bell 7-m','mm',neutral=True,H=4,C=1,S=1,d_ref='Linke et al. 1979 ApJ 234, L139',lab_ref='Kilb 1955 JCP 23, 1736',notes=None,Acon=102771,Bcon=12952,Ccon=12400,mua=1.3,mub=0.8)
+C2H4 = Molecule('ethylene','C2H4',1981,'C2H4','IRC+10216','McMath Solar Telescope','IR',neutral=True,H=4,C=2,d_ref='Betz 1981 ApJ 244, L103',lab_ref='Lambeau et al. 1980 JMS 81, 227',notes=None,mua=0.0)
+C5H = Molecule('pentynylidyne radical','C5H',1986,'C5H','IRC+10216','IRAM','cm',radical=True,neutral=True,H=1,C=5,d_ref='Cernicharo et al. 1986 A&A 164, L1',lab_ref='Gottlieb et al. 1986 A&A 164, L5',notes='*See also Cernicharo et al. 1986 A&A 167, L5 and Cernicharo et al. 1987 A&A 172, L5',Bcon=2395,mua=4.9)
+CH3NC = Molecule('methyl isocyanide','CH3NC',1988,'CH3NC','Sgr B2','IRAM','mm',neutral=True,H=3,C=2,N=1,d_ref='Cernicharo et al. 1988 A&A 189, L1',lab_ref='Kukolich 1972 JCP 57, 869; Ring et al. 1947 Phys Rev 72, 1262',notes='*Confirmed in Remijan et al. 2005 ApJ 632, 333 and Gratier et al. 2013 557, A101',Acon=157151,Bcon=10053,Ccon=10053,mua=3.9)
+HC2CHO = Molecule('propynal','HC2CHO',1988,'HC2CHO','TMC-1','NRAO 140-ft, Nobeyama','cm',neutral=True,H=2,C=3,O=1,d_ref='Irvine et al. 1988 ApJ 335, L89',lab_ref='Winnewisser 1973 JMS 46, 16',notes=None,Acon=68035,Bcon=4826,Ccon=4500,mua=2.4,mub=0.6)
+H2C4 = Molecule('butatrienylidene','H2C4',1991,'H2C4','IRC+10216','IRAM','mm',neutral=True,H=2,C=4,d_ref='Cernicharo et al. 1991 ApJ 368, L43',lab_ref='Killian et al. 1990 ApJ 365, L89',notes=None,Acon=286234,Bcon=4503,Ccon=4429,mua=4.1)
+C5S = Molecule('pentacarbon monosulfide radical','C5S',1993,'C5S','IRC+10216','NRAO 140-ft','cm',radical=True,neutral=True,C=5,S=1,d_ref='Bell et al. 1993 ApJ 417, L37',lab_ref='Kasai et al. 1993 ApJ 410, L45; Gordon et al. 2001 ApJS 134, 311',notes='*Confirmed in Agúndez et al. 2014 A&A 570, A45',Bcon=923,mua=5.1)
+HC3NHp = Molecule('protonated cyanoacetylene','HC3NH+',1994,'HC3NH+','TMC-1','Nobeyama','cm',cation=True,H=2,C=3,N=1,d_ref='Kawaguchi et al. 1994 ApJ 420, L95',lab_ref='Lee & Amano 1987 ApJ 323',notes=None,Bcon=4329,mua=1.6)
+C5N = Molecule('cyanobutadiynyl radical','C5N',1998,'C5N','TMC-1','Effelsberg 100-m, IRAM','cm',radical=True,neutral=True,C=5,N=1,d_ref='Guélin et al. 1998 A&A 355, L1',lab_ref='Kasai et al. 1997 ApJ 477, L65',notes=None,Bcon=1403,mua=3.4)
+HC4H = Molecule('diacetylene','HC4H',2001,'HC4H','CRL 618','ISO','IR',neutral=True,H=2,C=4,d_ref='Cernicharo et al. 2001 ApJ 546, L123',lab_ref='Arie & Johns 1992 JMS 155, 195',notes='*Confirmed in 2018 ApJ 852, 80',exgal=True,exgal_d_ref='Bernard-Salas et al. 2006 ApJ 652, L29',exgal_sources='SMP LMC 11',mua=0.0)
+HC4N = Molecule('','HC4N',2004,'HC4N','IRC+10216','IRAM','mm',radical=True,neutral=True,H=1,C=4,N=1,d_ref='Cernicharo et al. 2004 ApJ 615, L145',lab_ref='Tang et al. 1999 CPL 315, 69',notes=None,Bcon=2302,mua=4.3)
+cH2C3O = Molecule('cyclopropenone','c-H2C3O',2006,'c-H2C3O','Sgr B2','GBT','cm',neutral=True,cyclic=True,H=2,C=3,O=1,d_ref='Hollis et al. 2006 ApJ 642, 933',lab_ref='Benson et al. 1973 JACS 95, 2772; Guillemin et al. 1990 JMS 140, 190',notes=None,Acon=32041,Bcon=7825,Ccon=6281,mua=4.4)
+CH2CNH = Molecule('ketenimine','CH2CNH',2006,'CH2CNH','Sgr B2','GBT','cm',neutral=True,H=3,C=2,N=1,d_ref='Lovas et al. 2006 ApJ 645, L137',lab_ref='Rodler et al. 1984 CPL 110, 447; Rodler et al. 1986 JMS 118, 267',notes=None,Acon=201444,Bcon=9663,Ccon=9470,mua=0.4,mub=1.4)
+C5Nm = Molecule('cyanobutadiynyl anion','C5N-',2008,'C5N-','IRC+10216','IRAM','mm',anion=True,C=5,N=1,d_ref='Cernicharo et al. 2008 ApJ 688, L83',lab_ref='Botschwina & Oswald 2008 JCP 129, 044305',notes=None,Bcon=1389,mua=5.2)
+HNCHCN = Molecule('E-cyanomethanimine','HNCHCN',2013,'HNCHCN','Sgr B2','GBT','cm',neutral=True,H=2,C=2,N=2,d_ref='Zaleski et al. 2013 ApJ 765, L9',lab_ref='Zaleski et al. 2013 ApJ 765, L9',notes=None,Bcon=1389,mua=3.3,mub=2.5)
+SiH3CN = Molecule('silyl cyanide','SiH3CN',2014,'SiH3CN','IRC+10216','IRAM','mm',neutral=True,H=3,C=1,N=1,Si=1,d_ref='Agúndez et al. 2014 A&A 570, A45',lab_ref='Priem et al. 1998 JMS 191, 183',notes='*Confirmed in Cernicharo et al. 2017 A&A 606, L5',Acon=62695,Bcon=4972,Ccon=4600,mua=3.4)
 
 six_atom_list = [CH3OH,CH3CN,NH2CHO,CH3SH,C2H4,C5H,CH3NC,HC2CHO,H2C4,C5S,HC3NHp,C5N,HC4H,HC4N,cH2C3O,CH2CNH,C5Nm,HNCHCN,SiH3CN]
 
@@ -356,17 +369,17 @@ six_atom_list = [CH3OH,CH3CN,NH2CHO,CH3SH,C2H4,C5H,CH3NC,HC2CHO,H2C4,C5S,HC3NHp,
 #					Seven Atom Molecules					#
 #############################################################
 
-CH3CHO = Molecule('acetaldehyde','CH3CHO',1973,'CH3CHO','Sgr B2','NRAO 140-ft','cm',neutral=True,H=4,C=2,O=1,d_ref='Gottlieb 1973 Molecules in the Galactic Environment 181; Fourikis et al. 1974 Aust J Phys 27, 425; Gilmore et al. 1976 ApJ 204, 43',lab_ref='Kilb et al. 1957 JCP 26, 1695; Souter & Wood 1970 JCP 52, 674',notes=None,ice='Tentative',ice_d_ref='Schutte et al. 1999 A&A 343, 966',ice_l_ref='Schutte et al. 1999 A&A 343, 966',exgal=True,exgal_d_ref='Muller et al. 2011 A&A 535, A103',exgal_sources='PKS 1830-211 LOS')
-CH3CCH = Molecule('methylacetylene','CH3CCH',1973,'CH3CCH','Sgr B2','NRAO 36-ft','mm',neutral=True,H=4,C=3,d_ref='Buhl & Snyder 1973 Molecules in the Galactic Environment 187',lab_ref='Trambarulo et al. 1950 JCP 18, 1613',notes=None,exgal=True,exgal_d_ref='Mauersberger et al. 1991 A&A 247, 307',exgal_sources='NGC 253, M82')
-CH3NH2 = Molecule('methylamine','CH3NH2',1974,'CH3NH2','Sgr B2, Orion','Mitaka 6-m, NRAO 36-ft, Parkes 64-m','cm, mm',neutral=True,H=5,C=1,N=1,d_ref='Fourikis et al. 1974 ApJ 191, L139; Kaifu et al. 1974 ApJ 191, L135',lab_ref='Takagi & Kojima 1973 ApJ 181, L91',notes=None,exgal=True,exgal_d_ref='Muller et al. 2011 A&A 535, A103',exgal_sources='PKS 1830-211 LOS')
-CH2CHCN = Molecule('vinylcyanide','CH2CHCN',1975,'CH2CHCN','Sgr B2','Parkes 64-m','cm',neutral=True,H=3,C=3,N=1,d_ref='Gardner & Winnewisser 1975 ApJ 195, L127',lab_ref='Gerry & Winnewisser 1973 JMS 48, 1',notes=None)
-HC5N = Molecule('cyanodiacetylene','HC5N',1976,'HC5N','Sgr B2','Algonquin 46-m','cm',neutral=True,H=1,C=5,N=1,d_ref='Broten et al. 1976 ApJ 209, L143; Avery et al. 1976 ApJ 205 L173',lab_ref='Alexander et al. 1976 JMS 62, 175',notes=None,exgal='Tentative',exgal_d_ref='Aladro et al. 2015 A&A 579, A101',exgal_sources='NGC 253')
-C6H = Molecule('hexatriynyl radical','C6H',1986,'C6H','TMC-1','Nobeyama','cm',radical=True,neutral=True,H=1,C=6,d_ref='Suzuki et al. 1986 PASJ 38, 911',lab_ref='Pearson et al. 1988 A&A 189, L13',notes=None)
-cC2H4O = Molecule('ethylene oxide','c-C2H4O',1997,'c-C2H4O','Sgr B2','Haystack, Nobeyama, SEST 15-m','cm, mm',neutral=True,cyclic=True,H=4,C=2,O=1,d_ref='Dickens et al. 1997 ApJ 489, 753',lab_ref='Hirose 1974 ApJ 189, L145',notes=None)
-CH2CHOH = Molecule('vinyl alcohol','CH2CHOH',2001,'CH2CHOH','Sgr B2','NRAO 12-m','mm',neutral=True,H=4,C=2,O=1,d_ref='Turner & Apponi 2001 ApJ 561, L207',lab_ref='Rodler 1985 JMS 114, 23; Kaushik 1977 CPL 49, 90',notes=None)
-C6Hm = Molecule('hexatriynyl anion','C6H-',2006,'C6H-','TMC-1, IRC+10216','GBT','cm',anion=True,H=1,C=6,d_ref='McCarthy et al. 2006 ApJ 652, L141',lab_ref='McCarthy et al. 2006 ApJ 652, L141',notes='*First gas-phase molecular anion')
-CH3NCO = Molecule('methyl isocyanate','CH3NCO',2015,'CH3NCO','Sgr B2, Orion','ARO 12-m, SMT','mm',neutral=True,H=3,C=2,O=1,N=1,d_ref='Halfen et al. 2015 ApJ 812, L5',lab_ref='Halfen et al. 2015 ApJ 812, L5',notes='*see also Cernicharo et al. 2016 A&A 587, L4')
-HC5O = Molecule('butadiynylformyl radical','HC5O',2017,'HC5O','TMC-1','GBT','cm',radical=True,neutral=True,H=1,C=5,O=1,d_ref='McGuire et al. 2017 ApJ 843, L28',lab_ref='Mohamed et al. 2005 JCP 123, 234301',notes=None)
+CH3CHO = Molecule('acetaldehyde','CH3CHO',1973,'CH3CHO','Sgr B2','NRAO 140-ft','cm',neutral=True,H=4,C=2,O=1,d_ref='Gottlieb 1973 Molecules in the Galactic Environment 181; Fourikis et al. 1974 Aust J Phys 27, 425; Gilmore et al. 1976 ApJ 204, 43',lab_ref='Kilb et al. 1957 JCP 26, 1695; Souter & Wood 1970 JCP 52, 674',notes=None,ice='Tentative',ice_d_ref='Schutte et al. 1999 A&A 343, 966',ice_l_ref='Schutte et al. 1999 A&A 343, 966',exgal=True,exgal_d_ref='Muller et al. 2011 A&A 535, A103',exgal_sources='PKS 1830-211 LOS',Acon=56449,Bcon=10160,Ccon=9101,mua=2.4,mub=1.3)
+CH3CCH = Molecule('methylacetylene','CH3CCH',1973,'CH3CCH','Sgr B2','NRAO 36-ft','mm',neutral=True,H=4,C=3,d_ref='Buhl & Snyder 1973 Molecules in the Galactic Environment 187',lab_ref='Trambarulo et al. 1950 JCP 18, 1613',notes=None,exgal=True,exgal_d_ref='Mauersberger et al. 1991 A&A 247, 307',exgal_sources='NGC 253, M82',Acon=158590,Bcon=8546,Ccon=8546,mua=0.8)
+CH3NH2 = Molecule('methylamine','CH3NH2',1974,'CH3NH2','Sgr B2, Orion','Mitaka 6-m, NRAO 36-ft, Parkes 64-m','cm, mm',neutral=True,H=5,C=1,N=1,d_ref='Fourikis et al. 1974 ApJ 191, L139; Kaifu et al. 1974 ApJ 191, L135',lab_ref='Takagi & Kojima 1973 ApJ 181, L91',notes=None,exgal=True,exgal_d_ref='Muller et al. 2011 A&A 535, A103',exgal_sources='PKS 1830-211 LOS',Acon=103156,Bcon=22608,Ccon=21730,mua=0.3,mub=1.3)
+CH2CHCN = Molecule('vinylcyanide','CH2CHCN',1975,'CH2CHCN','Sgr B2','Parkes 64-m','cm',neutral=True,H=3,C=3,N=1,d_ref='Gardner & Winnewisser 1975 ApJ 195, L127',lab_ref='Gerry & Winnewisser 1973 JMS 48, 1',notes=None,Acon=49851,Bcon=4971,Ccon=4514,mua=3.8,mub=0.9)
+HC5N = Molecule('cyanodiacetylene','HC5N',1976,'HC5N','Sgr B2','Algonquin 46-m','cm',neutral=True,H=1,C=5,N=1,d_ref='Broten et al. 1976 ApJ 209, L143; Avery et al. 1976 ApJ 205 L173',lab_ref='Alexander et al. 1976 JMS 62, 175',notes=None,exgal='Tentative',exgal_d_ref='Aladro et al. 2015 A&A 579, A101',exgal_sources='NGC 253',Bcon=1331,mua=4.3)
+C6H = Molecule('hexatriynyl radical','C6H',1986,'C6H','TMC-1','Nobeyama','cm',radical=True,neutral=True,H=1,C=6,d_ref='Suzuki et al. 1986 PASJ 38, 911',lab_ref='Pearson et al. 1988 A&A 189, L13',notes=None,Bcon=1391,mua=5.5)
+cC2H4O = Molecule('ethylene oxide','c-C2H4O',1997,'c-C2H4O','Sgr B2','Haystack, Nobeyama, SEST 15-m','cm, mm',neutral=True,cyclic=True,H=4,C=2,O=1,d_ref='Dickens et al. 1997 ApJ 489, 753',lab_ref='Hirose 1974 ApJ 189, L145',notes=None,Acon=25484,Bcon=22121,Ccon=14098,mub=1.9)
+CH2CHOH = Molecule('vinyl alcohol','CH2CHOH',2001,'CH2CHOH','Sgr B2','NRAO 12-m','mm',neutral=True,H=4,C=2,O=1,d_ref='Turner & Apponi 2001 ApJ 561, L207',lab_ref='Rodler 1985 JMS 114, 23; Kaushik 1977 CPL 49, 90',notes=None,Acon=62868,Bcon=10456,Ccon=8963,mua=0.5,mub=1.7)
+C6Hm = Molecule('hexatriynyl anion','C6H-',2006,'C6H-','TMC-1, IRC+10216','GBT','cm',anion=True,H=1,C=6,d_ref='McCarthy et al. 2006 ApJ 652, L141',lab_ref='McCarthy et al. 2006 ApJ 652, L141',notes='*First gas-phase molecular anion',Bcon=1377,mua=8.2)
+CH3NCO = Molecule('methyl isocyanate','CH3NCO',2015,'CH3NCO','Sgr B2, Orion','ARO 12-m, SMT','mm',neutral=True,H=3,C=2,O=1,N=1,d_ref='Halfen et al. 2015 ApJ 812, L5',lab_ref='Halfen et al. 2015 ApJ 812, L5',notes='*see also Cernicharo et al. 2016 A&A 587, L4',Acon=128400,Bcon=4415,Ccon=4257,mua=2.9)
+HC5O = Molecule('butadiynylformyl radical','HC5O',2017,'HC5O','TMC-1','GBT','cm',radical=True,neutral=True,H=1,C=5,O=1,d_ref='McGuire et al. 2017 ApJ 843, L28',lab_ref='Mohamed et al. 2005 JCP 123, 234301',notes=None,Bcon=1294,mua=2.2)
 
 seven_atom_list = [CH3CHO,CH3CCH,CH3NH2,CH2CHCN,HC5N,C6H,cC2H4O,CH2CHOH,C6Hm,CH3NCO,HC5O]
 
@@ -375,18 +388,18 @@ seven_atom_list = [CH3CHO,CH3CCH,CH3NH2,CH2CHCN,HC5N,C6H,cC2H4O,CH2CHOH,C6Hm,CH3
 #					Eight Atom Molecules					#
 #############################################################
 
-HCOOCH3 = Molecule('methyl formate','HCOOCH3',1975,'HCOOCH3','Sgr B2','Parkes 64-m, Effelsberg 100-m','cm',neutral=True,H=4,C=2,O=2,d_ref='Churchwell & Winnewisser 1975 A&A 45, 229; Brown et al. 1975 ApJ 197, L29',lab_ref='Brown et al. 1975 ApJ 197, L29',notes='*t-mf detected 2012 ApJ 755, 143',exgal=True,exgal_d_ref='Sewiło et al. 2018 ApJL 853, L19',exgal_sources='LMC')
-CH3C3N = Molecule('methylcyanoacetylene','CH3C3N',1984,'CH3C3N','TMC-1','NRAO 140-ft','cm',neutral=True,H=3,C=4,N=1,d_ref='Broten et al. 1984 ApJ 276, L25',lab_ref='Moises et al. 1982 JMS 92, 497',notes=None)
-C7H = Molecule('heptatriynylidyne radical','C7H',1997,'C7H','IRC+10216','IRAM','mm',radical=True,neutral=True,H=1,C=7,d_ref='Guélin et al. 1997 A&A 317, L1',lab_ref='Travers et al. 1996 ApJ 465, L77',notes=None)
-CH3COOH = Molecule('acetic acid','CH3COOH',1997,'CH3COOH','Sgr B2','BIMA, OVRO','mm',neutral=True,H=4,C=2,O=2,d_ref='Mehringer et al. 1997 ApJ 480, L71',lab_ref='Tabor 1957 JCP 27, 974',notes=None)
-H2C6 = Molecule('hexapentaenylidene','H2C6',1997,'H2C6','TMC-1','Goldstone 70-m','cm',neutral=True,H=2,C=6,d_ref='Langer et al. 1997 ApJ 480, L63',lab_ref='McCarthy et al. 1997 Science 275, 518',notes=None)
-CH2OHCHO = Molecule('glycolaldehyde','CH2OHCHO',2000,'CH2OHCHO','Sgr B2','NRAO 12-m','mm',neutral=True,H=4,C=2,O=2,d_ref='Hollis et al. 2000 ApJ 540, L107',lab_ref='Marstokk & Mollendal 1973 J Mol Struct 16, 259',notes=None)
-HC6H = Molecule('triacetylene','HC6H',2001,'HC6H','CRL 618','ISO','IR',neutral=True,H=2,C=6,d_ref='Cernicharo et al. 2001 ApJ 546, L123',lab_ref='Haas etal. 1994 JMS 167, 176',notes=None,exgal=True,exgal_d_ref='Bernard-Salas et al. 2006 ApJ 652, L29',exgal_sources='SMP LMC 11')
-CH2CHCHO = Molecule('propenal','CH2CHCHO',2004,'CH2CHCHO','Sgr B2, G327.3-0.6','NRAO 12-m, SEST 15-m','cm',neutral=True,H=4,C=3,O=1,d_ref='Hollis et al. 2004 ApJ 610, L21',lab_ref='Winnewisser et al. 1975 Z Naturforsch 30, 1001',notes=None)
-CH2CCHCN = Molecule('cyanoallene','CH2CCHCN',2006,'CH2CCHCN','TMC-1','GBT','cm',neutral=True,H=3,C=4,N=1,d_ref='Lovas et al. 2006 ApJ 637, L37',lab_ref='Bouche et al. 1973 J Mol Struct 18, 211',notes='*Also Chin et al. 2006 AIP Conf. Proc. 855, 149')
-NH2CH2CN = Molecule('aminoacetonitrile','NH2CH2CN',2008,'NH2CH2CN','Sgr B2','IRAM, PdBI,  ATCA','mm',neutral=True,H=4,C=2,N=2,d_ref='Belloche et al. 2008 A&A 482, 179',lab_ref='Bogey et al. 1990 JMS 143, 180',notes=None)
-CH3CHNH = Molecule('ethanimine','CH3CHNH',2013,'CH3CHNH','Sgr B2','GBT','cm',neutral=True,H=5,C=2,N=1,d_ref='Loomis et al. 2013 ApJL 765, L10',lab_ref='Loomis et al. 2013 ApJL 765, L10',notes=None)
-CH3SiH3 = Molecule('methyl silane','CH3SiH3',2017,'CH3SiH3','IRC+10216','IRAM','mm',neutral=True,H=6,C=1,Si=1,d_ref='Cernicharo et al. 2017 A&A 606, L5',lab_ref='Wong et al. 1983 JMS 102, 89',notes=None)
+HCOOCH3 = Molecule('methyl formate','HCOOCH3',1975,'HCOOCH3','Sgr B2','Parkes 64-m, Effelsberg 100-m','cm',neutral=True,H=4,C=2,O=2,d_ref='Churchwell & Winnewisser 1975 A&A 45, 229; Brown et al. 1975 ApJ 197, L29',lab_ref='Brown et al. 1975 ApJ 197, L29',notes='*t-mf detected 2012 ApJ 755, 143',exgal=True,exgal_d_ref='Sewiło et al. 2018 ApJL 853, L19',exgal_sources='LMC',Acon=17630,Bcon=9243,Ccon=5318,mua=1.6,mub=0.7)
+CH3C3N = Molecule('methylcyanoacetylene','CH3C3N',1984,'CH3C3N','TMC-1','NRAO 140-ft','cm',neutral=True,H=3,C=4,N=1,d_ref='Broten et al. 1984 ApJ 276, L25',lab_ref='Moises et al. 1982 JMS 92, 497',notes=None,Acon=158099,Bcon=2066,Ccon=2066,mua=4.8)
+C7H = Molecule('heptatriynylidyne radical','C7H',1997,'C7H','IRC+10216','IRAM','mm',radical=True,neutral=True,H=1,C=7,d_ref='Guélin et al. 1997 A&A 317, L1',lab_ref='Travers et al. 1996 ApJ 465, L77',notes=None,Bcon=875,mua=5.9)
+CH3COOH = Molecule('acetic acid','CH3COOH',1997,'CH3COOH','Sgr B2','BIMA, OVRO','mm',neutral=True,H=4,C=2,O=2,d_ref='Mehringer et al. 1997 ApJ 480, L71',lab_ref='Tabor 1957 JCP 27, 974',notes=None,Acon=11335,Bcon=9479,Ccon=5325,mua=2.9,mub=4.9)
+H2C6 = Molecule('hexapentaenylidene','H2C6',1997,'H2C6','TMC-1','Goldstone 70-m','cm',neutral=True,H=2,C=6,d_ref='Langer et al. 1997 ApJ 480, L63',lab_ref='McCarthy et al. 1997 Science 275, 518',notes=None,Acon=268400,Bcon=1348,Ccon=1341,mua=6.2)
+CH2OHCHO = Molecule('glycolaldehyde','CH2OHCHO',2000,'CH2OHCHO','Sgr B2','NRAO 12-m','mm',neutral=True,H=4,C=2,O=2,d_ref='Hollis et al. 2000 ApJ 540, L107',lab_ref='Marstokk & Mollendal 1973 J Mol Struct 16, 259',notes=None,Acon=18446,Bcon=6526,Ccon=4969,mua=0.3,mub=2.3)
+HC6H = Molecule('triacetylene','HC6H',2001,'HC6H','CRL 618','ISO','IR',neutral=True,H=2,C=6,d_ref='Cernicharo et al. 2001 ApJ 546, L123',lab_ref='Haas etal. 1994 JMS 167, 176',notes=None,exgal=True,exgal_d_ref='Bernard-Salas et al. 2006 ApJ 652, L29',exgal_sources='SMP LMC 11',mua=0.0)
+CH2CHCHO = Molecule('propenal','CH2CHCHO',2004,'CH2CHCHO','Sgr B2, G327.3-0.6','NRAO 12-m, SEST 15-m','cm',neutral=True,H=4,C=3,O=1,d_ref='Hollis et al. 2004 ApJ 610, L21',lab_ref='Winnewisser et al. 1975 Z Naturforsch 30, 1001',notes=None,Acon=47354,Bcon=4660,Ccon=4243,mua=3.1,mub=0.6)
+CH2CCHCN = Molecule('cyanoallene','CH2CCHCN',2006,'CH2CCHCN','TMC-1','GBT','cm',neutral=True,H=3,C=4,N=1,d_ref='Lovas et al. 2006 ApJ 637, L37',lab_ref='Bouche et al. 1973 J Mol Struct 18, 211',notes='*Also Chin et al. 2006 AIP Conf. Proc. 855, 149',Acon=25981,Bcon=2689,Ccon=2475,mua=4.1,mub=1.3)
+NH2CH2CN = Molecule('aminoacetonitrile','NH2CH2CN',2008,'NH2CH2CN','Sgr B2','IRAM, PdBI,  ATCA','mm',neutral=True,H=4,C=2,N=2,d_ref='Belloche et al. 2008 A&A 482, 179',lab_ref='Bogey et al. 1990 JMS 143, 180',notes=None,Acon=30246,Bcon=4761,Ccon=4311,mua=2.6,mub=0.6)
+CH3CHNH = Molecule('ethanimine','CH3CHNH',2013,'CH3CHNH','Sgr B2','GBT','cm',neutral=True,H=5,C=2,N=1,d_ref='Loomis et al. 2013 ApJL 765, L10',lab_ref='Loomis et al. 2013 ApJL 765, L10',notes=None,Acon=49961,Bcon=9828,Ccon=8650,mua=0.8,mub=1.9)
+CH3SiH3 = Molecule('methyl silane','CH3SiH3',2017,'CH3SiH3','IRC+10216','IRAM','mm',neutral=True,H=6,C=1,Si=1,d_ref='Cernicharo et al. 2017 A&A 606, L5',lab_ref='Wong et al. 1983 JMS 102, 89',notes=None,Acon=56189,Bcon=10986,Ccon=10986,mua=0.7)
 
 eight_atom_list = [HCOOCH3,CH3C3N,C7H,CH3COOH,H2C6,CH2OHCHO,HC6H,CH2CHCHO,CH2CCHCN,NH2CH2CN,CH3CHNH,CH3SiH3]
 
@@ -395,17 +408,17 @@ eight_atom_list = [HCOOCH3,CH3C3N,C7H,CH3COOH,H2C6,CH2OHCHO,HC6H,CH2CHCHO,CH2CCH
 #					Nine Atom Molecules						#
 #############################################################
 
-CH3OCH3 = Molecule('dimethyl ether','CH3OCH3',1974,'CH3OCH3','Orion','NRAO 36-ft, NRL 85-ft','cm, mm',neutral=True,H=6,C=2,O=1,d_ref='Snyder et al. 1974 ApJ 191, L79',lab_ref='Kasai & Myers JCP 30, 1096; Blukis et al. 1963 JCP 38, 2753',notes=None,exgal=True,exgal_d_ref='Qiu et al. 2018 A&A 613, A3; Sewiło et al. 2018 ApJL 853, L19',exgal_sources='NGC 1068, LMC')
-CH3CH2OH = Molecule('ethanol','CH3CH2OH',1975,'CH3CH2OH','Sgr B2','NRAO 36-ft','mm',neutral=True,H=6,C=2,O=1,d_ref='Zukerman et al. 1975 ApJ 196, L99',lab_ref='Takano et al. 1986 JMS 26, 157',notes='*g-ethanol detected 1997 ApJ 480, 420')
-CH3CH2CN = Molecule('ethyl cyanide','CH3CH2CN',1977,'CH3CH2CN','Orion, Sgr B2','NRAO 36-ft','mm',neutral=True,H=5,C=3,N=1,d_ref='Johnson et al. 1977 ApJ 218, 370',lab_ref='Johnson et al. 1977 ApJ 218, 370',notes=None)
-HC7N = Molecule('cyanotriacetylene','HC7N',1977,'HC7N','TMC-1','Algonquin 46-m, Haystack','cm',neutral=True,H=1,C=7,N=1,d_ref='Kroto et al. 1977 Bull. Am. As. Soc. 9, 303',lab_ref='Kirby et al. 1980 JMS 83, 261',notes=None)
-CH3C4H = Molecule('methyldiacetylene','CH3C4H',1984,'CH3C4H','TMC-1','Effelsberg 100-m, Haystack, NRAO 140-ft','cm',neutral=True,H=4,C=5,d_ref='Walmsley et al. 1984 A&A 134, L11',lab_ref='Heath et al. 1955 Faraday Discuss. 19, 38',notes=None)
-C8H = Molecule('octatriynyl radical','C8H',1996,'C8H','IRC+10216','IRAM, Nobeyama','mm',radical=True,neutral=True,H=1,C=8,d_ref='Cernicharo & Guélin 1996 A&A 309, L27',lab_ref='Pauzat et al. 1991 ApJ 369, L13',notes=None)
-CH3CONH2 = Molecule('acetamide','CH3CONH2',2006,'CH3CONH2','Sgr B2','GBT','cm',neutral=True,H=5,C=2,O=1,N=1,d_ref='Hollis et al. 2006 ApJ 643, L25',lab_ref='Suenram et al. 2001 JMS 208, 188',notes=None)
-C8Hm = Molecule('octatriynyl anion','C8H-',2007,'C8H-','TMC-1, IRC+10216','GBT','cm',anion=True,H=1,C=8,d_ref='Brünken et al. 2007 ApJ 664, L43; Remijan et al. 2007 ApJ 664, L47',lab_ref='Gupta et al. 2007 ApJ 655, L57',notes=None)
-CH2CHCH3 = Molecule('propylene','CH2CHCH3',2007,'CH2CHCH3','TMC-1','IRAM','mm',neutral=True,H=6,C=3,d_ref='Marcelino et al. 2007 ApJ 665, L127',lab_ref='Pearson et al. 1994 JMS 166, 120; Wlodarczak et al. 1994 JMS 167, 239',notes=None)
-CH3CH2SH = Molecule('ethyl mercaptan','CH3CH2SH',2014,'CH3CH2SH','Orion','IRAM','mm',neutral=True,H=6,C=2,S=1,d_ref='Kolesniková et al. 2014 ApJ 784, L7',lab_ref='Kolesniková et al. 2014 ApJ 784, L7',notes=None)
-HC7O = Molecule('hexadiynylformyl radical','HC7O',2017,'HC7O','TMC-1','GBT','cm',radical=True,neutral=True,H=1,C=7,O=1,d_ref='McGuire et al. 2017 ApJ 843, L28',lab_ref='Mohamed et al. 2005 JCP 123, 234301',notes='*Confirmed in Cordiner et al. 2017 ApJ 850, 194')
+CH3OCH3 = Molecule('dimethyl ether','CH3OCH3',1974,'CH3OCH3','Orion','NRAO 36-ft, NRL 85-ft','cm, mm',neutral=True,H=6,C=2,O=1,d_ref='Snyder et al. 1974 ApJ 191, L79',lab_ref='Kasai & Myers JCP 30, 1096; Blukis et al. 1963 JCP 38, 2753',notes=None,exgal=True,exgal_d_ref='Qiu et al. 2018 A&A 613, A3; Sewiło et al. 2018 ApJL 853, L19',exgal_sources='NGC 1068, LMC',Acon=38788,Bcon=10057,Ccon=8887,mub=1.3)
+CH3CH2OH = Molecule('ethanol','CH3CH2OH',1975,'CH3CH2OH','Sgr B2','NRAO 36-ft','mm',neutral=True,H=6,C=2,O=1,d_ref='Zukerman et al. 1975 ApJ 196, L99',lab_ref='Takano et al. 1986 JMS 26, 157',notes='*g-ethanol detected 1997 ApJ 480, 420',Acon=34892,Bcon=9351,Ccon=8135,mua=0.1,mub=1.4)
+CH3CH2CN = Molecule('ethyl cyanide','CH3CH2CN',1977,'CH3CH2CN','Orion, Sgr B2','NRAO 36-ft','mm',neutral=True,H=5,C=3,N=1,d_ref='Johnson et al. 1977 ApJ 218, 370',lab_ref='Johnson et al. 1977 ApJ 218, 370',notes=None,Acon=27664,Bcon=4714,Ccon=4235,mua=3.9,mub=1.2)
+HC7N = Molecule('cyanotriacetylene','HC7N',1977,'HC7N','TMC-1','Algonquin 46-m, Haystack','cm',neutral=True,H=1,C=7,N=1,d_ref='Kroto et al. 1977 Bull. Am. As. Soc. 9, 303',lab_ref='Kirby et al. 1980 JMS 83, 261',notes=None,Bcon=564,mua=4.8)
+CH3C4H = Molecule('methyldiacetylene','CH3C4H',1984,'CH3C4H','TMC-1','Effelsberg 100-m, Haystack, NRAO 140-ft','cm',neutral=True,H=4,C=5,d_ref='Walmsley et al. 1984 A&A 134, L11',lab_ref='Heath et al. 1955 Faraday Discuss. 19, 38',notes=None,Acon=159140,Bcon=2036,Ccon=2036,mua=1.2)
+C8H = Molecule('octatriynyl radical','C8H',1996,'C8H','IRC+10216','IRAM, Nobeyama','mm',radical=True,neutral=True,H=1,C=8,d_ref='Cernicharo & Guélin 1996 A&A 309, L27',lab_ref='Pauzat et al. 1991 ApJ 369, L13',notes=None,Bcon=587,mua=6.5)
+CH3CONH2 = Molecule('acetamide','CH3CONH2',2006,'CH3CONH2','Sgr B2','GBT','cm',neutral=True,H=5,C=2,O=1,N=1,d_ref='Hollis et al. 2006 ApJ 643, L25',lab_ref='Suenram et al. 2001 JMS 208, 188',notes=None,Acon=10788,Bcon=9331,Ccon=5157,mua=1.1,mub=3.5)
+C8Hm = Molecule('octatriynyl anion','C8H-',2007,'C8H-','TMC-1, IRC+10216','GBT','cm',anion=True,H=1,C=8,d_ref='Brünken et al. 2007 ApJ 664, L43; Remijan et al. 2007 ApJ 664, L47',lab_ref='Gupta et al. 2007 ApJ 655, L57',notes=None,Bcon=583,mua=10.4)
+CH2CHCH3 = Molecule('propylene','CH2CHCH3',2007,'CH2CHCH3','TMC-1','IRAM','mm',neutral=True,H=6,C=3,d_ref='Marcelino et al. 2007 ApJ 665, L127',lab_ref='Pearson et al. 1994 JMS 166, 120; Wlodarczak et al. 1994 JMS 167, 239',notes=None,Acon=46281,Bcon=9308,Ccon=8130,mua=0.4,mub=0.1)
+CH3CH2SH = Molecule('ethyl mercaptan','CH3CH2SH',2014,'CH3CH2SH','Orion','IRAM','mm',neutral=True,H=6,C=2,S=1,d_ref='Kolesniková et al. 2014 ApJ 784, L7',lab_ref='Kolesniková et al. 2014 ApJ 784, L7',notes=None,Acon=28747,Bcon=5295,Ccon=4846,mua=1.5,mub=0.2,muc=0.6)
+HC7O = Molecule('hexadiynylformyl radical','HC7O',2017,'HC7O','TMC-1','GBT','cm',radical=True,neutral=True,H=1,C=7,O=1,d_ref='McGuire et al. 2017 ApJ 843, L28',lab_ref='Mohamed et al. 2005 JCP 123, 234301',notes='*Confirmed in Cordiner et al. 2017 ApJ 850, 194',Bcon=549,mua=2.2)
 
 nine_atom_list = [CH3OCH3,CH3CH2OH,CH3CH2CN,HC7N,CH3C4H,C8H,CH3CONH2,C8Hm,CH2CHCH3,CH3CH2SH,HC7O]
 
@@ -414,24 +427,24 @@ nine_atom_list = [CH3OCH3,CH3CH2OH,CH3CH2CN,HC7N,CH3C4H,C8H,CH3CONH2,C8Hm,CH2CHC
 #					Ten Atom Molecules						#
 #############################################################
 
-acetone = Molecule('acetone','(CH3)2CO',1987,'acetone','Sgr B2','IRAM, NRAO 140-ft, NRAO 12-m','cm, mm',neutral=True,H=6,C=3,O=1,d_ref='Combes et al. 1987 A&A 180, L13',lab_ref='Vacherand et al. 1986 JMS 118, 355',notes='*Confirmed in 2002 ApJ 578, 245')
-HOCH2CH2OH = Molecule('ethylene glycol','HOCH2CH2OH',2002,'HOCH2CH2OH','Sgr B2','NRAO 12-m','mm',neutral=True,H=6,C=2,O=2,d_ref='Hollis et al. 2002 ApJ 571, L59',lab_ref='Christen et al. 1995 JMS 172, 57',notes='*aGg\' conformer in 2017 A&A 598, A59')
-CH2CH2CHO = Molecule('propanal','CH2CH2CHO',2004,'CH2CH2CHO','Sgr B2','GBT','cm',neutral=True,H=6,C=3,O=1,d_ref='Hollis et al. 2004 ApJ 610, L21',lab_ref='Butcher & Wilson 1964 JCP 40, 1671',notes=None)
-CH3C5N = Molecule('methylcyanodiacetylene','CH3C5N',2006,'CH3C5N','TMC-1','GBT','cm',neutral=True,H=4,C=6,N=1,d_ref='Snyder et al. 2006 ApJ 647, 412',lab_ref='Chen et al. 1998 JMS 192, 1',notes=None)
-CH3CHCH2O = Molecule('propylene oxide','CH3CHCH2O',2016,'CH3CHCH2O','Sgr B2','GBT','cm',neutral=True,cyclic=True,H=6,C=3,O=1,d_ref='McGuire & Carroll et al. 2016 Science 352, 1449',lab_ref='McGuire & Carroll et al. 2016 Science 352, 1449',notes='*First chiral molecule')
-CH3OCH2OH = Molecule('methoxymethanol','CH3OCH2OH',2017,'CH3OCH2OH','NGC 6334','ALMA','mm',neutral=True,H=6,C=2,O=2,d_ref='McGuire et al. 2017 ApJ 851, L46',lab_ref='Motiyenko et al. 2018 PCCP 20, 5509',notes=None)
+acetone = Molecule('acetone','(CH3)2CO',1987,'acetone','Sgr B2','IRAM, NRAO 140-ft, NRAO 12-m','cm, mm',neutral=True,H=6,C=3,O=1,d_ref='Combes et al. 1987 A&A 180, L13',lab_ref='Vacherand et al. 1986 JMS 118, 355',notes='*Confirmed in 2002 ApJ 578, 245',Acon=10165,Bcon=8515,Ccon=4910,mub=2.9)
+HOCH2CH2OH = Molecule('ethylene glycol','HOCH2CH2OH',2002,'HOCH2CH2OH','Sgr B2','NRAO 12-m','mm',neutral=True,H=6,C=2,O=2,d_ref='Hollis et al. 2002 ApJ 571, L59',lab_ref='Christen et al. 1995 JMS 172, 57',notes='*aGg\' conformer in 2017 A&A 598, A59',Acon=15361,Bcon=5588,Ccon=4614,mua=2.1,mub=0.9)
+CH3CH2CHO = Molecule('propanal','CH3CH2CHO',2004,'CH3CH2CHO','Sgr B2','GBT','cm',neutral=True,H=6,C=3,O=1,d_ref='Hollis et al. 2004 ApJ 610, L21',lab_ref='Butcher & Wilson 1964 JCP 40, 1671',notes=None,Acon=16712,Bcon=5969,Ccon=4648,mua=1.7,mub=1.9)
+CH3C5N = Molecule('methylcyanodiacetylene','CH3C5N',2006,'CH3C5N','TMC-1','GBT','cm',neutral=True,H=4,C=6,N=1,d_ref='Snyder et al. 2006 ApJ 647, 412',lab_ref='Chen et al. 1998 JMS 192, 1',notes=None,Acon=158099,Bcon=778,Ccon=778,mua=5.4)
+CH3CHCH2O = Molecule('propylene oxide','CH3CHCH2O',2016,'CH3CHCH2O','Sgr B2','GBT','cm',neutral=True,cyclic=True,H=6,C=3,O=1,d_ref='McGuire & Carroll et al. 2016 Science 352, 1449',lab_ref='McGuire & Carroll et al. 2016 Science 352, 1449',notes='*First chiral molecule',Acon=18024,Bcon=6682,Ccon=5951,mua=1.0,mub=1.7,muc=0.6)
+CH3OCH2OH = Molecule('methoxymethanol','CH3OCH2OH',2017,'CH3OCH2OH','NGC 6334','ALMA','mm',neutral=True,H=6,C=2,O=2,d_ref='McGuire et al. 2017 ApJ 851, L46',lab_ref='Motiyenko et al. 2018 PCCP 20, 5509',notes=None,Acon=17238,Bcon=5568,Ccon=4813,mua=0.2,mub=0.1,muc=0.1)
 
-ten_atom_list = [acetone,HOCH2CH2OH,CH2CH2CHO,CH3C5N,CH3CHCH2O,CH3OCH2OH]
+ten_atom_list = [acetone,HOCH2CH2OH,CH3CH2CHO,CH3C5N,CH3CHCH2O,CH3OCH2OH]
 
 
 #############################################################
 #					Eleven Atom Molecules					#
 #############################################################
 
-HC9N = Molecule('cyanotetraacetylene','HC9N',1978,'HC9N','TMC-1','Algonquin 46-m, NRAO 140-ft','cm',neutral=True,H=1,C=9,N=1,d_ref='Broten et al. 1978 ApJ 223, L105',lab_ref='Iida et al. 1991 ApJ 371, L45',notes=None)
-CH3C6H = Molecule('methyltriacetylene','CH3C6H',2006,'CH3C6H','TMC-1','GBT','cm',neutral=True,H=4,C=7,d_ref='Remijan et al. 2006 ApJ 643, L37',lab_ref='Alexander et al. 1978 JMS 70, 84',notes=None)
-C2H5OCHO = Molecule('ethyl formate','C2H5OCHO',2009,'C2H5OCHO','Sgr B2','IRAM','mm',neutral=True,H=6,C=3,O=2,d_ref='Belloche et al. 2009 A&A 499, 215',lab_ref='Medvedev et al. 2009 ApJS 181, 433',notes=None)
-CH3COOCH3 = Molecule('methyl acetate','CH3COOCH3',2013,'CH3COOCH3','Orion','IRAM','mm',neutral=True,H=6,C=3,O=2,d_ref='Tercero et al. 2013 ApJ 770, L13',lab_ref='Tudorie et al. 2011 JMS 269, 211',notes=None)
+HC9N = Molecule('cyanotetraacetylene','HC9N',1978,'HC9N','TMC-1','Algonquin 46-m, NRAO 140-ft','cm',neutral=True,H=1,C=9,N=1,d_ref='Broten et al. 1978 ApJ 223, L105',lab_ref='Iida et al. 1991 ApJ 371, L45',notes=None,Bcon=291,mua=5.2)
+CH3C6H = Molecule('methyltriacetylene','CH3C6H',2006,'CH3C6H','TMC-1','GBT','cm',neutral=True,H=4,C=7,d_ref='Remijan et al. 2006 ApJ 643, L37',lab_ref='Alexander et al. 1978 JMS 70, 84',notes=None,Acon=159140,Bcon=778,Ccon=778,mua=1.5)
+C2H5OCHO = Molecule('ethyl formate','C2H5OCHO',2009,'C2H5OCHO','Sgr B2','IRAM','mm',neutral=True,H=6,C=3,O=2,d_ref='Belloche et al. 2009 A&A 499, 215',lab_ref='Medvedev et al. 2009 ApJS 181, 433',notes=None,Acon=17747,Bcon=2905,Ccon=2579,mua=1.9,mub=0.7,muc=0.0)
+CH3COOCH3 = Molecule('methyl acetate','CH3COOCH3',2013,'CH3COOCH3','Orion','IRAM','mm',neutral=True,H=6,C=3,O=2,d_ref='Tercero et al. 2013 ApJ 770, L13',lab_ref='Tudorie et al. 2011 JMS 269, 211',notes=None,Acon=10247,Bcon=4170,Ccon=3077,mua=0.0,mub=1.6)
 
 eleven_atom_list = [HC9N,CH3C6H,C2H5OCHO,CH3COOCH3]
 
@@ -440,9 +453,9 @@ eleven_atom_list = [HC9N,CH3C6H,C2H5OCHO,CH3COOCH3]
 #					Twelve Atom Molecules					#
 #############################################################
 
-C6H6 = Molecule('benzene','C6H6',2001,'C6H6','CRL 618','ISO','IR',neutral=True,cyclic=True,H=6,C=6,d_ref='Cernicharo et al. 2001 ApJ 546, L123',lab_ref='Lindenmayer et al. 1988 JMS 128 172',notes=None,exgal=True,exgal_d_ref='Bernard-Salas et al. 2006 ApJ 652, L29',exgal_sources='SMP LMC 11')
-nC3H7CN = Molecule('n-propyl cyanide','n-C3H7CN',2009,'n-C3H7CN','Sgr B2','IRAM','mm',neutral=True,H=7,C=4,N=1,d_ref='Belloche et al. 2009 A&A 499, 215',lab_ref='Belloche et al. 2009 A&A 499, 215',notes=None)
-iC3H7CN = Molecule('isopropyl cyanide','i-C3H7CN',2014,'i-C3H7CN','Sgr B2','ALMA','mm',neutral=True,H=7,C=4,N=1,d_ref='Belloche et al. 2014 Science 345, 1584',lab_ref='Muller et al. 2011 JMS 267, 100',notes=None)
+C6H6 = Molecule('benzene','C6H6',2001,'C6H6','CRL 618','ISO','IR',neutral=True,cyclic=True,H=6,C=6,d_ref='Cernicharo et al. 2001 ApJ 546, L123',lab_ref='Lindenmayer et al. 1988 JMS 128 172',notes=None,exgal=True,exgal_d_ref='Bernard-Salas et al. 2006 ApJ 652, L29',exgal_sources='SMP LMC 11',mua=0.0)
+nC3H7CN = Molecule('n-propyl cyanide','n-C3H7CN',2009,'n-C3H7CN','Sgr B2','IRAM','mm',neutral=True,H=7,C=4,N=1,d_ref='Belloche et al. 2009 A&A 499, 215',lab_ref='Belloche et al. 2009 A&A 499, 215',notes=None,Acon=23668,Bcon=2268,Ccon=2153,mua=4.0,mub=1.0,muc=0.0)
+iC3H7CN = Molecule('isopropyl cyanide','i-C3H7CN',2014,'i-C3H7CN','Sgr B2','ALMA','mm',neutral=True,H=7,C=4,N=1,d_ref='Belloche et al. 2014 Science 345, 1584',lab_ref='Muller et al. 2011 JMS 267, 100',notes=None,Acon=7941,Bcon=3968,Ccon=2901,mua=4.0,mub=0.6)
 
 twelve_atom_list = [C6H6,nC3H7CN,iC3H7CN]
 
@@ -451,7 +464,7 @@ twelve_atom_list = [C6H6,nC3H7CN,iC3H7CN]
 #					Thirteen Atom Molecules					#
 #############################################################
 
-cC6H5CN = Molecule('benzonitrile','c-C6H5CN',2018,'C6H5CN','TMC-1','GBT','cm',neutral=True,cyclic=True,H=5,C=7,N=1,d_ref='McGuire et al. 2018 Science 359, 202',lab_ref='Wohlfart et al. 2008 JMS 247, 119',notes=None)
+cC6H5CN = Molecule('benzonitrile','c-C6H5CN',2018,'C6H5CN','TMC-1','GBT','cm',neutral=True,cyclic=True,H=5,C=7,N=1,d_ref='McGuire et al. 2018 Science 359, 202',lab_ref='Wohlfart et al. 2008 JMS 247, 119',notes=None,Acon=5655,Bcon=1547,Ccon=1214,mua=4.5)
 
 thirteen_atom_list = [cC6H5CN]
 
@@ -460,9 +473,9 @@ thirteen_atom_list = [cC6H5CN]
 #					Fullerene Molecules						#
 #############################################################
 
-C60 = Molecule('buckminsterfullerene','C60',2010,'C60','TC 1, NGC 7023','Spitzer','IR',neutral=True,C=60,d_ref='Cami et al. 2010 Science 329, 1180',lab_ref='Nemes et al. 1994 CPL 218, 295',notes='*See also Sellgren et al. 2010 ApJ 722, L54 and Werner 2004b, Sellgren 2007 therein')
-C60p = Molecule('buckminsterfullerene cation','C60+',2013,'C60+','NGC 7023','Spitzer','IR',cation=True,C=60,d_ref='Berné et al. 2013 A&A 550, L4',lab_ref='Kern et al. 2013 JPCA 117, 8251',notes='*See also Campbell et al. 2015 Nature 523, 322')
-C70 = Molecule('rugbyballene','C70',2010,'C70','TC 1','Spitzer','IR',neutral=True,C=70,d_ref='Cami et al. 2010 Science 329, 1180',lab_ref='Nemes et al. 1994 CPL 218, 295',notes=None)
+C60 = Molecule('buckminsterfullerene','C60',2010,'C60','TC 1, NGC 7023','Spitzer','IR',neutral=True,C=60,d_ref='Cami et al. 2010 Science 329, 1180',lab_ref='Nemes et al. 1994 CPL 218, 295',notes='*See also Sellgren et al. 2010 ApJ 722, L54 and Werner 2004b, Sellgren 2007 therein',mua=0.0)
+C60p = Molecule('buckminsterfullerene cation','C60+',2013,'C60+','NGC 7023','Spitzer','IR',cation=True,C=60,d_ref='Berné et al. 2013 A&A 550, L4',lab_ref='Kern et al. 2013 JPCA 117, 8251',notes='*See also Campbell et al. 2015 Nature 523, 322',mua=0.0)
+C70 = Molecule('rugbyballene','C70',2010,'C70','TC 1','Spitzer','IR',neutral=True,C=70,d_ref='Cami et al. 2010 Science 329, 1180',lab_ref='Nemes et al. 1994 CPL 218, 295',notes=None,mua=0.0)
 
 fullerene_list = [C60,C60p,C70]
 
@@ -472,7 +485,7 @@ fullerene_list = [C60,C60p,C70]
 #############################################################
 
 
-full_list = [CH,CN,CHp,OH,CO,H2,SiO,CS,SO,SiS,NS,C2,NO,HCl,NaCl,AlCl,KCl,AlF,PN,SiC,CP,NH,SiN,SOp,COp,HF,N2,CFp,PO,O2,AlO,CNm,OHp,SHp,HClp,SH,TiO,ArHp,NSp,H2O,HCOp,HCN,OCS,HNC,H2S,N2Hp,C2H,SO2,HCO,HNO,HCSp,HOCp,SiC2,C2S,C3,CO2,CH2,C2O,MgNC,NH2,NaCN,N2O,MgCN,H3p,SiCN,AlNC,SiNC,HCP,CCP,AlOH,H2Op,H2Clp,KCN,FeCN,HO2,TiO2,CCN,SiCSi,S2H,HCS,HSC,NCO,NH3,H2CO,HNCO,H2CS,C2H2,C3N,HNCS,HOCOp,C3O,lC3H,HCNHp,H3Op,C3S,cC3H,HC2N,H2CN,SiC3,CH3,C3Nm,PH3,HCNO,HOCN,HSCN,HOOH,lC3Hp,HMgNC,HCCO,CNCN,HC3N,HCOOH,CH2NH,NH2CN,H2CCO,C4H,SiH4,cC3H2,CH2CN,C5,SiC4,H2CCC,CH4,HCCNC,HNCCC,H2COHp,C4Hm,CNCHO,HNCNH,CH3O,NH3Dp,H2NCOp,NCCNHp,CH3Cl,CH3OH,CH3CN,NH2CHO,CH3SH,C2H4,C5H,CH3NC,HC2CHO,H2C4,C5S,HC3NHp,C5N,HC4H,HC4N,cH2C3O,CH2CNH,C5Nm,HNCHCN,SiH3CN,CH3CHO,CH3CCH,CH3NH2,CH2CHCN,HC5N,C6H,cC2H4O,CH2CHOH,C6Hm,CH3NCO,HC5O,HCOOCH3,CH3C3N,C7H,CH3COOH,H2C6,CH2OHCHO,HC6H,CH2CHCHO,CH2CCHCN,NH2CH2CN,CH3CHNH,CH3SiH3,CH3OCH3,CH3CH2OH,CH3CH2CN,HC7N,CH3C4H,C8H,CH3CONH2,C8Hm,CH2CHCH3,CH3CH2SH,HC7O,acetone,HOCH2CH2OH,CH2CH2CHO,CH3C5N,CH3CHCH2O,CH3OCH2OH,HC9N,CH3C6H,C2H5OCHO,CH3COOCH3,C6H6,nC3H7CN,iC3H7CN,cC6H5CN,C60,C60p,C70]
+full_list = [CH,CN,CHp,OH,CO,H2,SiO,CS,SO,SiS,NS,C2,NO,HCl,NaCl,AlCl,KCl,AlF,PN,SiC,CP,NH,SiN,SOp,COp,HF,N2,CFp,PO,O2,AlO,CNm,OHp,SHp,HClp,SH,TiO,ArHp,NSp,H2O,HCOp,HCN,OCS,HNC,H2S,N2Hp,C2H,SO2,HCO,HNO,HCSp,HOCp,SiC2,C2S,C3,CO2,CH2,C2O,MgNC,NH2,NaCN,N2O,MgCN,H3p,SiCN,AlNC,SiNC,HCP,CCP,AlOH,H2Op,H2Clp,KCN,FeCN,HO2,TiO2,CCN,SiCSi,S2H,HCS,HSC,NCO,NH3,H2CO,HNCO,H2CS,C2H2,C3N,HNCS,HOCOp,C3O,lC3H,HCNHp,H3Op,C3S,cC3H,HC2N,H2CN,SiC3,CH3,C3Nm,PH3,HCNO,HOCN,HSCN,HOOH,lC3Hp,HMgNC,HCCO,CNCN,HC3N,HCOOH,CH2NH,NH2CN,H2CCO,C4H,SiH4,cC3H2,CH2CN,C5,SiC4,H2CCC,CH4,HCCNC,HNCCC,H2COHp,C4Hm,CNCHO,HNCNH,CH3O,NH3Dp,H2NCOp,NCCNHp,CH3Cl,CH3OH,CH3CN,NH2CHO,CH3SH,C2H4,C5H,CH3NC,HC2CHO,H2C4,C5S,HC3NHp,C5N,HC4H,HC4N,cH2C3O,CH2CNH,C5Nm,HNCHCN,SiH3CN,CH3CHO,CH3CCH,CH3NH2,CH2CHCN,HC5N,C6H,cC2H4O,CH2CHOH,C6Hm,CH3NCO,HC5O,HCOOCH3,CH3C3N,C7H,CH3COOH,H2C6,CH2OHCHO,HC6H,CH2CHCHO,CH2CCHCN,NH2CH2CN,CH3CHNH,CH3SiH3,CH3OCH3,CH3CH2OH,CH3CH2CN,HC7N,CH3C4H,C8H,CH3CONH2,C8Hm,CH2CHCH3,CH3CH2SH,HC7O,acetone,HOCH2CH2OH,CH3CH2CHO,CH3C5N,CH3CHCH2O,CH3OCH2OH,HC9N,CH3C6H,C2H5OCHO,CH3COOCH3,C6H6,nC3H7CN,iC3H7CN,cC6H5CN,C60,C60p,C70]
 
 natoms_list = [two_atom_list,three_atom_list,four_atom_list,five_atom_list,six_atom_list,seven_atom_list,eight_atom_list,nine_atom_list,ten_atom_list,eleven_atom_list,twelve_atom_list,thirteen_atom_list,fullerene_list]
 
@@ -495,7 +508,23 @@ for x in full_list:
 		
 	else:
 	
-		x.du = None
+		x.du = None		
+		
+	#we'll update the kappa value for molecules that have such a thing.
+	
+	if True in (t != None for t in [x.Acon,x.Bcon,x.Ccon]):
+	
+		A = x.Acon
+		B = x.Bcon
+		C = x.Ccon
+		
+		if 	A == None and C == None:
+		
+			x.kappa = -1
+			
+		else:
+		
+			x.kappa = (2*B - A - C)/(A - C)
 
 #############################################################
 #							Sources  						#
@@ -2832,15 +2861,225 @@ def atoms_by_wavelength():
 				
 			output.write('{}\t{}\t{}\t{}\t{}\t{}\n' .format(cm,mm,submm,ir,vis,uv))	
 				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
-				
+#kappas_by_mass_atoms generates an ascii file, tab delimited, of the kappa values of each molecule and their mass and natoms, for polar species.
+
+def kappas_by_mass():
+
+	with open('kappas_by_mass_atoms.txt', 'w') as output:
+	
+		for x in full_list:
+		
+			if x.kappa != None:
 			
+				output.write('{}\t{}\t{}\t{}\n' .format(x.formula,x.kappa,x.mass,x.natoms))
+				
+	return
+	
+#kappas_by_heavy_atoms generates an ascii file, tab delimited, of the kappa values of molecules with more than three heavy atoms and the number of heavy atoms, for polar species.
+
+def kappas_by_heavy_atoms():
+
+	with open('kappas_by_heavy_atoms.txt', 'w') as output:
+	
+		for x in full_list:
+		
+			nheavy = x.natoms - x.H
+		
+			if x.kappa != None and nheavy > 2: 
+			
+				output.write('{}\t{}\t{}\n' .format(x.formula,x.kappa,nheavy))
+				
+	return							
+
+#kappas_by_heavy_atoms_binned generates an ascii file, tab delimited, of the kappa values within set bins of molecules with more than three heavy atoms and the number of heavy atoms, for polar species.
+				
+def kappas_by_heavy_atoms_binned():			
+
+	results = {}
+	
+	results[3] = [0] * 22
+	results[4] = [0] * 22
+	results[5] = [0] * 22
+	results[6] = [0] * 22
+	results[7] = [0] * 22
+	results[8] = [0] * 22
+	results[9] = [0] * 22
+	results[10] = [0] * 22
+	
+	for x in full_list:
+	
+		nheavy = x.natoms - x.H
+		
+		if x.kappa != None and nheavy > 2:
+						
+			if x.kappa == -1:
+			
+				results[nheavy][0] += 1
+				
+			elif x.kappa < -0.9:
+			
+				results[nheavy][1] += 1
+				
+			elif x.kappa < -0.8:
+			
+				results[nheavy][2] += 1
+				
+			elif x.kappa < -0.7:
+			
+				results[nheavy][3] += 1	
+			
+			elif x.kappa < -0.6:
+			
+				results[nheavy][4] += 1
+				
+			elif x.kappa < -0.5:
+			
+				results[nheavy][5] += 1
+				
+			elif x.kappa < -0.4:
+			
+				results[nheavy][6] += 1				
+			
+			elif x.kappa < -0.3:
+			
+				results[nheavy][7] += 1
+				
+			elif x.kappa < -0.2:
+			
+				results[nheavy][8] += 1
+				
+			elif x.kappa < -0.1:
+			
+				results[nheavy][9] += 1	
+			
+			elif x.kappa < 0.0:
+			
+				results[nheavy][10] += 1
+				
+			elif x.kappa < 0.1:
+			
+				results[nheavy][11] += 1
+				
+			elif x.kappa < 0.2:
+			
+				results[nheavy][12] += 1	
+				
+			elif x.kappa < 0.3:
+			
+				results[nheavy][13] += 1
+				
+			elif x.kappa < 0.4:
+			
+				results[nheavy][14] += 1
+				
+			elif x.kappa < 0.5:
+			
+				results[nheavy][15] += 1				
+			
+			elif x.kappa < 0.6:
+			
+				results[nheavy][16] += 1
+				
+			elif x.kappa < 0.7:
+			
+				results[nheavy][17] += 1
+				
+			elif x.kappa < 0.8:
+			
+				results[nheavy][18] += 1	
+			
+			elif x.kappa < 0.9:
+			
+				results[nheavy][19] += 1
+				
+			elif x.kappa < 1.0:
+			
+				results[nheavy][20] += 1
+				
+			elif x.kappa == 1:
+			
+				results[nheavy][21] += 1									
+			
+	with open('kappas_by_heavy_atoms_binned.txt','w') as output:
+	
+		output.write('bins\t3\t4\t5\t6\t7\t8\t9\t10\n')
+		
+		for x in range(22):
+			
+			bin = round((-1 + 0.1*x),1)
+		
+			output.write('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n' .format(bin,results[3][x],results[4][x],results[5][x],results[6][x],results[7][x],results[8][x],results[9][x],results[10][x]))		
+			
+#max_kappa_by_heavy_atoms generates an ascii file, tab delimited, of the maximum kappa value of molecules with three or more heavy atoms, for polar species.
+
+def max_kappa_by_heavy_atoms():
+
+	results = {}
+	
+	for n in range(3,11):
+	
+		max = -10
+		
+		for x in full_list:
+		
+			if x.natoms - x.H == n:
+			
+				if x.kappa != None:
+				
+					if	x.kappa > max:
+				
+						max = x.kappa
+					
+		if max == -10:
+			
+			max = None
+		
+		results[n] = max		
+		
+	with open('max_kappa_by_heavy_atoms.txt','w') as output:
+	
+		output.write('natoms\tkappa\n')
+		
+		for x in range(3,11):
+		
+			output.write('{}\t{}\n' .format(x,results[x]))
+			
+	return
+	
+#average_kappa_by_heavy_atoms generates an ascii file, tab delimited, of the average kappa value of molecules with three or more heavy atoms, for polar species.
+
+def average_kappa_by_heavy_atoms():
+
+	results = {}
+	
+	for n in range(3,11):
+	
+		total_kappa = 0
+		nmols = 0
+		
+		for x in full_list:
+		
+			if x.natoms - x.H == n:
+			
+				if x.kappa != None:
+				
+					total_kappa += x.kappa
+					nmols += 1
+		
+		if nmols != 0:
+		
+			results[n] = total_kappa/nmols
+			
+		else:
+		
+			results[n] = 'NaN'		
+		
+	with open('average_kappa_by_heavy_atoms.txt','w') as output:
+	
+		output.write('natoms\tkappa\n')
+		
+		for x in range(3,11):
+		
+			output.write('{}\t{}\n' .format(x,results[x]))
+			
+	return	
